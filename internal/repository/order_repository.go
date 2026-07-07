@@ -30,3 +30,13 @@ func (r *OrderRepository) Create(order model.Order) model.Order {
 
 	return order
 }
+
+func (r *OrderRepository) Update(id int, updatedOrder model.Order) (model.Order, error) {
+	for i, order := range model.Orders {
+		if order.ID == id {
+			model.Orders[i] = updatedOrder
+			return updatedOrder, nil
+		}
+	}
+	return model.Order{}, errors.New("order not found")
+}

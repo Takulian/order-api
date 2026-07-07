@@ -37,3 +37,16 @@ func (s *OrderService) Create(req dto.CreateOrderRequest) model.Order {
 
 	return s.repository.Create(order)
 }
+
+func (s *OrderService) Update(id int, req dto.UpdateOrderRequest) (model.Order, error) {
+	order, err := s.repository.GetByID(id)
+	if err != nil {
+		return model.Order{}, err
+	}
+
+	order.Customer = req.Customer
+	order.Product = req.Product
+	order.Quantity = req.Quantity
+
+	return s.repository.Update(id, order)
+}

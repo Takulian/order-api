@@ -10,5 +10,6 @@ func NewRouter(orderHandler *handler.OrderHandler) *http.ServeMux {
 	mux.HandleFunc("GET /orders", orderHandler.GetOrders)
 	mux.HandleFunc("GET /orders/{id}", orderHandler.GetOrderByID)
 	mux.HandleFunc("POST /orders", orderHandler.CreateOrder)
+	mux.HandleFunc("PUT /orders/{id}", orderHandler.UpdateOrder)
 	return mux
 }
