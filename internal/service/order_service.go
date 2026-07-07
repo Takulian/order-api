@@ -50,3 +50,8 @@ func (s *OrderService) Update(id int, req dto.UpdateOrderRequest) (model.Order, 
 
 	return s.repository.Update(id, order)
 }
+
+func (s *OrderService) Delete(id int) error {
+	return s.repository.Delete(id)
+}
+

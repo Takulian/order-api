@@ -40,3 +40,13 @@ func (r *OrderRepository) Update(id int, updatedOrder model.Order) (model.Order,
 	}
 	return model.Order{}, errors.New("order not found")
 }
+
+func (r *OrderRepository) Delete(id int) error {
+	for i, order := range model.Orders {
+		if order.ID == id {
+			model.Orders = append(model.Orders[:i], model.Orders[i+1:]...)
+			return nil
+		}
+	}
+	return errors.New("order not found")
+}
