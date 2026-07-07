@@ -5,18 +5,40 @@ import (
 	"order-api/internal/model"
 )
 
-type OrderRepository struct{}
+type OrderRepository struct{
+	orders []model.Order
+	nextID int
+}
+
 
 func NewOrderRepository() *OrderRepository {
-	return &OrderRepository{}
+	return &OrderRepository{
+		orders: []model.Order{
+			{
+				ID:       1,
+				Customer: "Andi",
+				Product:  "Laptop",
+				Quantity: 1,
+				Status:   "Pending",
+			},
+			{
+				ID:       2,
+				Customer: "Budi",
+				Product:  "Mouse",
+				Quantity: 2,
+				Status:   "Paid",
+			},
+		},
+		nextID: 3,
+	}
 }
 
 func (r *OrderRepository) GetAll() []model.Order {
-	return model.Orders
+	return r.orders
 }
 
 func (r *OrderRepository) GetByID(id int) (model.Order, error) {
-	for _, order := range model.Orders {
+	for _, order := range r.orders {
 		if order.ID == id {
 			return order, nil
 		}
@@ -25,16 +47,17 @@ func (r *OrderRepository) GetByID(id int) (model.Order, error) {
 }
 
 func (r *OrderRepository) Create(order model.Order) model.Order {
-
-	model.Orders = append(model.Orders, order)
+	order.ID = r.nextID
+	r.nextID++
+	r.orders = append(r.orders, order)
 
 	return order
 }
 
 func (r *OrderRepository) Update(id int, updatedOrder model.Order) (model.Order, error) {
-	for i, order := range model.Orders {
+	for i, order := range r.orders {
 		if order.ID == id {
-			model.Orders[i] = updatedOrder
+			r.orders[i] = updatedOrder
 			return updatedOrder, nil
 		}
 	}
@@ -42,9 +65,9 @@ func (r *OrderRepository) Update(id int, updatedOrder model.Order) (model.Order,
 }
 
 func (r *OrderRepository) Delete(id int) error {
-	for i, order := range model.Orders {
+	for i, order := range r.orders {
 		if order.ID == id {
-			model.Orders = append(model.Orders[:i], model.Orders[i+1:]...)
+			r.orders = append(r.orders[:i], r.orders[i+1:]...)
 			return nil
 		}
 	}
