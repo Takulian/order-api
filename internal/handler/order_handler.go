@@ -120,7 +120,7 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 
 	order, err := h.service.Update(id, req)
 	if err != nil {
-		response.JSON(w, http.StatusNotFound, false, "Order not found", nil)
+		response.JSON(w, http.StatusNotFound, false, err.Error(), nil)
 		return
 	}
 	response.JSON(
