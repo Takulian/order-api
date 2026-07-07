@@ -31,7 +31,16 @@ func (s *OrderService) GetByID(id int) (model.Order, error) {
 	return s.repository.GetByID(id)
 }
 
-func (s *OrderService) Create(req dto.CreateOrderRequest) model.Order {
+func (s *OrderService) Create(req dto.CreateOrderRequest) (model.Order, error) {
+	if req.Customer == "" {
+		return model.Order{}, ErrCustomerRequired
+	}
+	if req.Product == "" {
+		return model.Order{}, ErrProductRequired
+	}
+	if req.Quantity <= 0 {
+		return model.Order{}, ErrInvalidQuantity
+	}
 	order := model.Order{
 		Customer: req.Customer,
 		Product:  req.Product,
@@ -39,10 +48,19 @@ func (s *OrderService) Create(req dto.CreateOrderRequest) model.Order {
 		Status:   "Pending",
 	}
 
-	return s.repository.Create(order)
+	return s.repository.Create(order), nil
 }
 
 func (s *OrderService) Update(id int, req dto.UpdateOrderRequest) (model.Order, error) {
+	if req.Customer == "" {
+		return model.Order{}, ErrCustomerRequired
+	}
+	if req.Product == "" {
+		return model.Order{}, ErrProductRequired
+	}
+	if req.Quantity <= 0 {
+		return model.Order{}, ErrInvalidQuantity
+	}
 	order, err := s.repository.GetByID(id)
 	if err != nil {
 		return model.Order{}, err
