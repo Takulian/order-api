@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	
+
 	"order-api/internal/dto"
+	"order-api/internal/response"
 	"order-api/internal/service"
 )
 
@@ -29,11 +30,8 @@ func NewOrderHandler(service *service.OrderService) *OrderHandler {
 //	@Success		200	{array}	model.Order
 //	@Router			/orders [get]
 func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	orders := h.service.GetAll()
-	if err := json.NewEncoder(w).Encode(orders); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	response.JSON(w, http.StatusOK, true, "Orders retrieved successfully", orders)
 }
 
 // GetOrderByID godoc
@@ -48,19 +46,22 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+		response.JSON(w, http.StatusBadRequest, false, "Invalid order ID", nil)
 		return
 	}
 
 	order, err := h.service.GetByID(id)
 	if err != nil {
-		http.Error(w, "Order not found", http.StatusNotFound)
+		response.JSON(w, http.StatusNotFound, false, "Order not found", nil)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(order); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	response.JSON(
+		w,
+		http.StatusOK,
+		true,
+		"Success",
+		order,
+	)
 }
 
 // CreateOrder godoc
@@ -76,19 +77,21 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		response.JSON(w, http.StatusBadRequest, false, "Invalid request body", nil)
 		return
 	}
 	order, err := h.service.Create(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		response.JSON(w, http.StatusBadRequest, false, err.Error(), nil)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(order); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	response.JSON(
+		w,
+		http.StatusCreated,
+		true,
+		"Order created successfully",
+		order,
+	)
 }
 
 // UpdateOrder godoc
@@ -111,19 +114,22 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 
 	var req dto.UpdateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		response.JSON(w, http.StatusBadRequest, false, "Invalid request body", nil)
 		return
 	}
 
 	order, err := h.service.Update(id, req)
 	if err != nil {
-		http.Error(w, "Order not found", http.StatusNotFound)
+		response.JSON(w, http.StatusNotFound, false, "Order not found", nil)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(order); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	response.JSON(
+		w,
+		http.StatusOK,
+		true,
+		"Order updated successfully",
+		order,
+	)
 }
 
 // DeleteOrder godoc
@@ -138,14 +144,14 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+		response.JSON(w, http.StatusBadRequest, false, "Invalid order ID", nil)
 		return
 	}
 
 	if err := h.service.Delete(id); err != nil {
-		http.Error(w, "Order not found", http.StatusNotFound)
+		response.JSON(w, http.StatusNotFound, false, "Order not found", nil)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	response.JSON(w, http.StatusNoContent, true, "Order deleted successfully", nil)
 }
