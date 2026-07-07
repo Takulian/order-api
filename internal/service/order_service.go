@@ -6,12 +6,18 @@ import (
 	"order-api/internal/repository"
 )
 
-type OrderService struct{}
+type OrderService struct{
+	repository *repository.OrderRepository
+}
 
-var OrderSvc = &OrderService{}
+func NewOrderService(repository *repository.OrderRepository) *OrderService {
+	return &OrderService{
+		repository: repository,
+	}
+}
 
 func (s *OrderService) GetAll() []model.Order {
-	return repository.OrderRepo.GetAll()
+	return s.repository.GetAll()
 }
 
 func (s *OrderService) Create(req dto.CreateOrderRequest) model.Order {
@@ -25,5 +31,5 @@ func (s *OrderService) Create(req dto.CreateOrderRequest) model.Order {
 
 	model.NextID++
 
-	return repository.OrderRepo.Create(order)
+	return s.repository.Create(order)
 }

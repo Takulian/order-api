@@ -5,9 +5,9 @@ import(
 	"order-api/internal/handler"
 )
 
-func NewRouter() *http.ServeMux {
+func NewRouter(orderHandler *handler.OrderHandler) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /orders", handler.GetOrders)
-	mux.HandleFunc("POST /orders", handler.CreateOrder)
+	mux.HandleFunc("GET /orders", orderHandler.GetOrders)
+	mux.HandleFunc("POST /orders", orderHandler.CreateOrder)
 	return mux
 }

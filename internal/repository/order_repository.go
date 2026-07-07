@@ -6,6 +6,10 @@ import (
 
 type OrderRepository struct{}
 
+func NewOrderRepository() *OrderRepository {
+	return &OrderRepository{}
+}
+
 func (r *OrderRepository) GetAll() []model.Order {
 	return model.Orders
 }
@@ -16,5 +20,3 @@ func (r *OrderRepository) Create(order model.Order) model.Order {
 
 	return order
 }
-
-var OrderRepo = &OrderRepository{}
