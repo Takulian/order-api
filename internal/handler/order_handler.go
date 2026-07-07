@@ -19,6 +19,15 @@ func NewOrderHandler(service *service.OrderService) *OrderHandler {
 	}
 }
 
+// GetOrders godoc
+//
+//	@Summary		Get all orders
+//	@Description	Get all orders
+//	@Tags			Orders
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{array}	model.Order
+//	@Router			/orders [get]
 func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	orders := h.service.GetAll()
@@ -27,6 +36,14 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetOrderByID godoc
+//
+//	@Summary	Get order
+//	@Tags		Orders
+//	@Produce	json
+//	@Param		id	path		int	true	"Order ID"
+//	@Success	200	{object}	model.Order
+//	@Router		/orders/{id} [get]
 func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
@@ -46,6 +63,16 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// CreateOrder godoc
+//
+//	@Summary		Create order
+//	@Description	Create new order
+//	@Tags			Orders
+//	@Accept			json
+//	@Produce		json
+//	@Param			order	body		dto.CreateOrderRequest	true	"Create Order"
+//	@Success		201		{object}	model.Order
+//	@Router			/orders [post]
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -64,6 +91,16 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// UpdateOrder godoc
+//
+//	@Summary	Update order
+//	@Tags		Orders
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path	int						true	"Order ID"
+//	@Param		order	body	dto.UpdateOrderRequest	true	"Order"
+//	@Success	200		{object}	model.Order
+//	@Router		/orders/{id} [put]
 func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
@@ -89,6 +126,14 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeleteOrder godoc
+//
+//	@Summary	Delete order
+//	@Tags		Orders
+//	@Produce	json
+//	@Param		id	path	int	true	"Order ID"
+//	@Success	204
+//	@Router		/orders/{id} [delete]
 func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)

@@ -1,0 +1,137 @@
+basePath: /
+definitions:
+  dto.CreateOrderRequest:
+    properties:
+      customer:
+        type: string
+      product:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  dto.UpdateOrderRequest:
+    properties:
+      customer:
+        type: string
+      product:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  model.Order:
+    properties:
+      customer:
+        type: string
+      id:
+        type: integer
+      product:
+        type: string
+      quantity:
+        type: integer
+      status:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: REST API belajar Go menggunakan net/http ServeMux
+  title: Order API
+  version: "1.0"
+paths:
+  /orders:
+    get:
+      consumes:
+      - application/json
+      description: Get all orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Order'
+            type: array
+      summary: Get all orders
+      tags:
+      - Orders
+    post:
+      consumes:
+      - application/json
+      description: Create new order
+      parameters:
+      - description: Create Order
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Order'
+      summary: Create order
+      tags:
+      - Orders
+  /orders/{id}:
+    delete:
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: Delete order
+      tags:
+      - Orders
+    get:
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Order'
+      summary: Get order
+      tags:
+      - Orders
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Order
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Order'
+      summary: Update order
+      tags:
+      - Orders
+swagger: "2.0"
