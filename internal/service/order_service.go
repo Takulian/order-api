@@ -20,6 +20,10 @@ func (s *OrderService) GetAll() []model.Order {
 	return s.repository.GetAll()
 }
 
+func (s *OrderService) GetByID(id int) (model.Order, error) {
+	return s.repository.GetByID(id)
+}
+
 func (s *OrderService) Create(req dto.CreateOrderRequest) model.Order {
 	order := model.Order{
 		ID:       model.NextID,

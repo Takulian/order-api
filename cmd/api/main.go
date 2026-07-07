@@ -4,6 +4,9 @@ import(
 	"log"
 	"net/http"
 	"order-api/internal/router"
+	"order-api/internal/service"
+	"order-api/internal/repository"
+	"order-api/internal/handler"
 )
 
 func main() {
