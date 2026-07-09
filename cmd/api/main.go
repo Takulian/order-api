@@ -18,12 +18,12 @@ import (
 // @host localhost:8080
 // @BasePath /
 func main() {
-	db, err := database.NewPostgresDB()
+	db, err := database.NewRedis()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	repo := repository.NewPostgresRepository(db)
+	repo := repository.NewRedisRepository(db)
 	service := service.NewOrderService(repo)
 	orderHandler := handler.NewOrderHandler(service)
 	router := router.NewRouter(orderHandler)
