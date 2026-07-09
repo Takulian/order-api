@@ -56,7 +56,7 @@ func (s *OrderService) Update(id int, req dto.UpdateOrderRequest) (model.Order, 
 	}
 	order, err := s.repository.GetByID(id)
 	if err != nil {
-		return model.Order{}, err
+		return model.Order{}, ErrOrderNotFound
 	}
 
 	order.Customer = req.Customer
