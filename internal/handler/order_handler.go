@@ -30,7 +30,11 @@ func NewOrderHandler(service *service.OrderService) *OrderHandler {
 //	@Success		200	{array}	model.Order
 //	@Router			/orders [get]
 func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	orders := h.service.GetAll()
+	orders, err := h.service.GetAll()
+	if err != nil {
+		response.JSON(w, http.StatusInternalServerError, false, err.Error(), nil)
+		return
+	}
 	response.JSON(w, http.StatusOK, true, "Orders retrieved successfully", orders)
 }
 

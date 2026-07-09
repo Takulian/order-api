@@ -1,12 +1,13 @@
 package main
 
-import(
+import (
 	"log"
 	"net/http"
+	"order-api/internal/database"
+	"order-api/internal/handler"
+	"order-api/internal/repository"
 	"order-api/internal/router"
 	"order-api/internal/service"
-	"order-api/internal/repository"
-	"order-api/internal/handler"
 
 	_ "order-api/docs"
 )
@@ -17,7 +18,12 @@ import(
 // @host localhost:8080
 // @BasePath /
 func main() {
-	repo := repository.NewOrderRepository()
+	db, err := database.NewPostgresDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	repo := repository.NewPostgresRepository(db)
 	service := service.NewOrderService(repo)
 	orderHandler := handler.NewOrderHandler(service)
 	router := router.NewRouter(orderHandler)

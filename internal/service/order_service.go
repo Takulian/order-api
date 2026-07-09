@@ -3,27 +3,20 @@ package service
 import (
 	"order-api/internal/dto"
 	"order-api/internal/model"
+	"order-api/internal/repository"
 )
 
-type OrderRepository interface {
-	GetAll() []model.Order
-	GetByID(id int) (model.Order, error)
-	Create(order model.Order) model.Order
-	Update(id int, order model.Order) (model.Order, error)
-	Delete(id int) error
+type OrderService struct {
+	repository repository.OrderRepository
 }
 
-type OrderService struct{
-	repository OrderRepository
-}
-
-func NewOrderService(repository OrderRepository) *OrderService {
+func NewOrderService(repository repository.OrderRepository) *OrderService {
 	return &OrderService{
 		repository: repository,
 	}
 }
 
-func (s *OrderService) GetAll() []model.Order {
+func (s *OrderService) GetAll() ([]model.Order, error) {
 	return s.repository.GetAll()
 }
 
@@ -48,7 +41,7 @@ func (s *OrderService) Create(req dto.CreateOrderRequest) (model.Order, error) {
 		Status:   "Pending",
 	}
 
-	return s.repository.Create(order), nil
+	return s.repository.Create(order)
 }
 
 func (s *OrderService) Update(id int, req dto.UpdateOrderRequest) (model.Order, error) {
@@ -76,4 +69,3 @@ func (s *OrderService) Update(id int, req dto.UpdateOrderRequest) (model.Order, 
 func (s *OrderService) Delete(id int) error {
 	return s.repository.Delete(id)
 }
-

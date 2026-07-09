@@ -5,14 +5,13 @@ import (
 	"order-api/internal/model"
 )
 
-type OrderRepository struct{
+type MemoryRepository struct {
 	orders []model.Order
 	nextID int
 }
 
-
-func NewOrderRepository() *OrderRepository {
-	return &OrderRepository{
+func NewMemoryRepository() *MemoryRepository {
+	return &MemoryRepository{
 		orders: []model.Order{
 			{
 				ID:       1,
@@ -33,11 +32,11 @@ func NewOrderRepository() *OrderRepository {
 	}
 }
 
-func (r *OrderRepository) GetAll() []model.Order {
-	return r.orders
+func (r *MemoryRepository) GetAll() ([]model.Order, error) {
+	return r.orders, nil
 }
 
-func (r *OrderRepository) GetByID(id int) (model.Order, error) {
+func (r *MemoryRepository) GetByID(id int) (model.Order, error) {
 	for _, order := range r.orders {
 		if order.ID == id {
 			return order, nil
@@ -46,15 +45,15 @@ func (r *OrderRepository) GetByID(id int) (model.Order, error) {
 	return model.Order{}, errors.New("order not found")
 }
 
-func (r *OrderRepository) Create(order model.Order) model.Order {
+func (r *MemoryRepository) Create(order model.Order) (model.Order, error) {
 	order.ID = r.nextID
 	r.nextID++
 	r.orders = append(r.orders, order)
 
-	return order
+	return order, nil
 }
 
-func (r *OrderRepository) Update(id int, updatedOrder model.Order) (model.Order, error) {
+func (r *MemoryRepository) Update(id int, updatedOrder model.Order) (model.Order, error) {
 	for i, order := range r.orders {
 		if order.ID == id {
 			r.orders[i] = updatedOrder
@@ -64,7 +63,7 @@ func (r *OrderRepository) Update(id int, updatedOrder model.Order) (model.Order,
 	return model.Order{}, errors.New("order not found")
 }
 
-func (r *OrderRepository) Delete(id int) error {
+func (r *MemoryRepository) Delete(id int) error {
 	for i, order := range r.orders {
 		if order.ID == id {
 			r.orders = append(r.orders[:i], r.orders[i+1:]...)
