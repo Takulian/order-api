@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"order-api/internal/cache"
 	"order-api/internal/database"
 	"order-api/internal/handler"
 	"order-api/internal/repository"
@@ -23,8 +24,12 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+	redisClient, err := cache.NewRedis()
+	if err != nil {
+		log.Fatal(err)
+	}
 	repo := repository.NewPostgresRepository(db)
-	service := service.NewOrderService(repo)
+	service := service.NewOrderService(repo, redisClient)
 	orderHandler := handler.NewOrderHandler(service)
 	router := router.NewRouter(orderHandler)
 	log.Println("Starting server on :8080")

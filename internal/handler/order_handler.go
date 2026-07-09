@@ -30,7 +30,7 @@ func NewOrderHandler(service *service.OrderService) *OrderHandler {
 //	@Success		200	{array}	model.Order
 //	@Router			/orders [get]
 func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	orders, err := h.service.GetAll()
+	orders, err := h.service.GetAll(r.Context())
 	if err != nil {
 		response.JSON(w, http.StatusInternalServerError, false, err.Error(), nil)
 		return
@@ -84,7 +84,7 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		response.JSON(w, http.StatusBadRequest, false, "Invalid request body", nil)
 		return
 	}
-	order, err := h.service.Create(req)
+	order, err := h.service.Create(r.Context(), req)
 	if err != nil {
 		response.JSON(w, http.StatusBadRequest, false, err.Error(), nil)
 		return
@@ -122,7 +122,7 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := h.service.Update(id, req)
+	order, err := h.service.Update(r.Context(), id, req)
 	if err != nil {
 		response.JSON(w, http.StatusNotFound, false, err.Error(), nil)
 		return
@@ -152,7 +152,7 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.Delete(id); err != nil {
+	if err := h.service.Delete(r.Context(), id); err != nil {
 		response.JSON(w, http.StatusNotFound, false, "Order not found", nil)
 		return
 	}
