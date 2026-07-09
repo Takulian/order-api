@@ -24,12 +24,13 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	redisClient, err := cache.NewRedis()
+	rdb, err := database.NewRedis()
 	if err != nil {
 		log.Fatal(err)
 	}
 	repo := repository.NewPostgresRepository(db)
-	service := service.NewOrderService(repo, redisClient)
+	cache := cache.NewRedisCache(rdb)
+	service := service.NewOrderService(repo, cache)
 	orderHandler := handler.NewOrderHandler(service)
 	router := router.NewRouter(orderHandler)
 	log.Println("Starting server on :8080")

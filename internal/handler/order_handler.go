@@ -54,7 +54,7 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := h.service.GetByID(id)
+	order, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
 		response.JSON(w, http.StatusNotFound, false, "Order not found", nil)
 		return
