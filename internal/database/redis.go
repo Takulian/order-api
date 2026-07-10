@@ -2,13 +2,15 @@ package database
 
 import (
 	"context"
+	"order-api/internal/config"
 
 	"github.com/redis/go-redis/v9"
 )
 
-func NewRedis() (*redis.Client, error) {
+func NewRedis(cfg config.RedisConfig) (*redis.Client, error) {
 	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr:     cfg.Addr(),
+		Password: cfg.Password,
 	})
 
 	if err := rdb.Ping(context.Background()).Err(); err != nil {

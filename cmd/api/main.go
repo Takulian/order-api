@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"order-api/internal/cache"
+	"order-api/internal/config"
 	"order-api/internal/database"
 	"order-api/internal/handler"
 	"order-api/internal/repository"
@@ -19,12 +20,16 @@ import (
 // @host localhost:8080
 // @BasePath /
 func main() {
-	db, err := database.NewPostgresDB()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+	db, err := database.NewPostgresDB(cfg.Database)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	rdb, err := database.NewRedis()
+	rdb, err := database.NewRedis(cfg.Redis)
 	if err != nil {
 		log.Fatal(err)
 	}
