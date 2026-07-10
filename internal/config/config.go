@@ -9,9 +9,10 @@ import (
 )
 
 type Config struct {
-	App      AppConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
+	App       AppConfig
+	Database  DatabaseConfig
+	Redis     RedisConfig
+	Telemetry TelemetryConfig
 }
 
 type AppConfig struct {
@@ -45,6 +46,11 @@ func (r RedisConfig) Addr() string {
 	return fmt.Sprintf("%s:%s", r.Host, r.Port)
 }
 
+type TelemetryConfig struct {
+	ServiceName  string
+	OTLPEndpoint string
+}
+
 func Load() (*Config, error) {
 	if err := godotenv.Load(); err != nil {
 		log.Println("file .env tidak ditemukan, menggunakan env bawaan")
@@ -67,6 +73,10 @@ func Load() (*Config, error) {
 			Host:     getEnv("REDIS_HOST", "localhost"),
 			Port:     getEnv("REDIS_PORT", "6379"),
 			Password: getEnv("REDIS_PASSWORD", ""),
+		},
+		Telemetry: TelemetryConfig{
+			ServiceName:  getEnv("OTEL_SERVICE_NAME", "order-api"),
+			OTLPEndpoint: getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318"),
 		},
 	}
 

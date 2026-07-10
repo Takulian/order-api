@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"order-api/internal/cache"
 	"order-api/internal/config"
 	"order-api/internal/database"
 	"order-api/internal/handler"
+	"order-api/internal/observability"
 	"order-api/internal/repository"
 	"order-api/internal/router"
 	"order-api/internal/service"
@@ -20,10 +22,24 @@ import (
 // @host localhost:8080
 // @BasePath /
 func main() {
+	ctx := context.Background()
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("gagal load config: %v", err)
 	}
+
+	logger, shutdown, err := observability.InitLogging(ctx, cfg.Telemetry)
+	if err != nil {
+		log.Fatalf("gagal setup logging: %v", err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Printf("gagal shutdown logging: %v", err)
+		}
+	}()
+
+	logger.Info("order-api starting up")
+
 	db, err := database.NewPostgresDB(cfg.Database)
 	if err != nil {
 		log.Fatal(err)
