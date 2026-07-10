@@ -18,5 +18,14 @@ services:
     restart: unless-stopped
     ports:
       - "6379:6379"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    ports:
+      - "4318:4318"
+      
 volumes:
   postgres_data:
