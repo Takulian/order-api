@@ -11,6 +11,7 @@ package mocks
 
 import (
 	context "context"
+	model "order-api/internal/model"
 	reflect "reflect"
 	time "time"
 
@@ -55,30 +56,60 @@ func (mr *MockOrderCacheMockRecorder) Del(ctx, key any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Del", reflect.TypeOf((*MockOrderCache)(nil).Del), ctx, key)
 }
 
-// Get mocks base method.
-func (m *MockOrderCache) Get(ctx context.Context, key string, value any) error {
+// GetAll mocks base method.
+func (m *MockOrderCache) GetAll(ctx context.Context, key string) ([]model.Order, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", ctx, key, value)
+	ret := m.ctrl.Call(m, "GetAll", ctx, key)
+	ret0, _ := ret[0].([]model.Order)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAll indicates an expected call of GetAll.
+func (mr *MockOrderCacheMockRecorder) GetAll(ctx, key any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockOrderCache)(nil).GetAll), ctx, key)
+}
+
+// GetByID mocks base method.
+func (m *MockOrderCache) GetByID(ctx context.Context, id int, key string) (model.Order, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", ctx, id, key)
+	ret0, _ := ret[0].(model.Order)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockOrderCacheMockRecorder) GetByID(ctx, id, key any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockOrderCache)(nil).GetByID), ctx, id, key)
+}
+
+// SetAll mocks base method.
+func (m *MockOrderCache) SetAll(ctx context.Context, key string, orders []model.Order, ttl time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetAll", ctx, key, orders, ttl)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Get indicates an expected call of Get.
-func (mr *MockOrderCacheMockRecorder) Get(ctx, key, value any) *gomock.Call {
+// SetAll indicates an expected call of SetAll.
+func (mr *MockOrderCacheMockRecorder) SetAll(ctx, key, orders, ttl any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockOrderCache)(nil).Get), ctx, key, value)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAll", reflect.TypeOf((*MockOrderCache)(nil).SetAll), ctx, key, orders, ttl)
 }
 
-// Set mocks base method.
-func (m *MockOrderCache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+// SetByID mocks base method.
+func (m *MockOrderCache) SetByID(ctx context.Context, key string, order model.Order, ttl time.Duration) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Set", ctx, key, value, ttl)
+	ret := m.ctrl.Call(m, "SetByID", ctx, key, order, ttl)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Set indicates an expected call of Set.
-func (mr *MockOrderCacheMockRecorder) Set(ctx, key, value, ttl any) *gomock.Call {
+// SetByID indicates an expected call of SetByID.
+func (mr *MockOrderCacheMockRecorder) SetByID(ctx, key, order, ttl any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockOrderCache)(nil).Set), ctx, key, value, ttl)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetByID", reflect.TypeOf((*MockOrderCache)(nil).SetByID), ctx, key, order, ttl)
 }
