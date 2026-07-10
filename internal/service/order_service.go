@@ -31,7 +31,7 @@ const cacheKey = "orders"
 func (s *OrderService) GetAll(ctx context.Context) ([]model.Order, error) {
 	var orders []model.Order
 
-	if err := s.cache.Get(ctx, cacheKey, &orders); err == nil {
+	if orders, err := s.cache.GetAll(ctx, cacheKey); err == nil {
 		return orders, nil
 	}
 
@@ -40,23 +40,21 @@ func (s *OrderService) GetAll(ctx context.Context) ([]model.Order, error) {
 		return nil, err
 	}
 
-	_ = s.cache.Set(ctx, cacheKey, orders, 5*time.Minute)
+	_ = s.cache.SetAll(ctx, cacheKey, orders, 5*time.Minute)
 
 	return orders, nil
 }
 
 func (s *OrderService) GetByID(ctx context.Context, id int) (model.Order, error) {
-	cacheKey := fmt.Sprintf("order:%d", id)
-	var order model.Order
-	if err := s.cache.Get(ctx, cacheKey, &order); err == nil {
+	idKey := fmt.Sprintf("orders:%d", id)
+	if order, err := s.cache.GetByID(ctx, id, idKey); err == nil {
 		return order, nil
 	}
 	order, err := s.repository.GetByID(id)
 	if err != nil {
 		return model.Order{}, err
 	}
-
-	_ = s.cache.Set(ctx, cacheKey, order, 5*time.Minute)
+	_ = s.cache.SetByID(ctx, idKey, order, 5*time.Minute)
 
 	return order, nil
 }
@@ -111,7 +109,7 @@ func (s *OrderService) Update(ctx context.Context, id int, req dto.UpdateOrderRe
 		return model.Order{}, err
 	}
 	_ = s.cache.Del(ctx, cacheKey)
-	_ = s.cache.Del(ctx, fmt.Sprintf("order:%d", id))
+	_ = s.cache.Del(ctx, fmt.Sprintf("orders:%d", id))
 
 	return updatedOrder, nil
 }
