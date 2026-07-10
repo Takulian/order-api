@@ -42,13 +42,20 @@ func main() {
 
 	db, err := database.NewPostgresDB(cfg.Database)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("koneksi ke database gagal", "error", err)
+		panic(err)
 	}
 	defer db.Close()
+	logger.Info("koneksi ke database berhasil")
+
 	rdb, err := database.NewRedis(cfg.Redis)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("koneksi ke redis gagal", "error", err)
+		panic(err)
 	}
+	defer rdb.Close()
+	logger.Info("koneksi ke redis berhasil")
+
 	repo := repository.NewPostgresRepository(db)
 	cache := cache.NewRedisCache(rdb)
 	service := service.NewOrderService(repo, cache)
