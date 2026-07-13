@@ -1,16 +1,16 @@
 package main
 
 import (
-	"log/slog"
+	"context"
 	"net/http"
 	"order-api/internal/cache"
 	"order-api/internal/config"
 	"order-api/internal/database"
 	"order-api/internal/handler"
+	"order-api/internal/observability"
 	"order-api/internal/repository"
 	"order-api/internal/router"
 	"order-api/internal/service"
-	"os"
 
 	_ "order-api/docs"
 )
@@ -21,8 +21,16 @@ import (
 // @host localhost:8080
 // @BasePath /
 func main() {
-	handlerLog := slog.NewJSONHandler(os.Stdout, nil)
-	logger := slog.New(handlerLog)
+	ctx := context.Background()
+	logger, shutdown, err := observability.InitLogging(ctx, "order-api")
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			logger.Error("gagal shutdown logging", "error", err)
+		}
+	}()
 
 	logger.Info("Logger berhasil di inisiasi")
 

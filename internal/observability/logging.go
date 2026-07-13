@@ -4,32 +4,26 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"order-api/internal/config"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
+	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/log/global"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 type Shutdown func(context.Context) error
 
-func InitLogging(ctx context.Context, cfg config.TelemetryConfig) (*slog.Logger, Shutdown, error) {
-	exporter, err := otlploghttp.New(
-		ctx,
-		otlploghttp.WithEndpoint(cfg.OTLPEndpoint),
-		otlploghttp.WithInsecure(),
-	)
+func InitLogging(ctx context.Context, serviceName string) (*slog.Logger, Shutdown, error) {
+	exporter, err := stdoutlog.New(stdoutlog.WithPrettyPrint())
 	if err != nil {
-		return nil, nil, fmt.Errorf("gagal membuat OTLP log exporter: %w", err)
+		return nil, nil, fmt.Errorf("gagal membuat exporter: %w", err)
 	}
 
-	res, err := resource.New(
-		ctx,
+	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceName(cfg.ServiceName),
+			semconv.ServiceName(serviceName),
 		),
 	)
 	if err != nil {
@@ -45,10 +39,7 @@ func InitLogging(ctx context.Context, cfg config.TelemetryConfig) (*slog.Logger,
 
 	global.SetLoggerProvider(provider)
 
-	logger := otelslog.NewLogger(cfg.ServiceName)
-
-	slog.SetDefault(logger)
+	logger := otelslog.NewLogger(serviceName)
 
 	return logger, provider.Shutdown, nil
-
 }
