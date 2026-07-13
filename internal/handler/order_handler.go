@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -12,11 +13,13 @@ import (
 
 type OrderHandler struct {
 	service *service.OrderService
+	logger  *slog.Logger
 }
 
-func NewOrderHandler(service *service.OrderService) *OrderHandler {
+func NewOrderHandler(service *service.OrderService, logger *slog.Logger) *OrderHandler {
 	return &OrderHandler{
 		service: service,
+		logger:  logger,
 	}
 }
 
@@ -50,6 +53,7 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		h.logger.WarnContext(r.Context(), "invalid order ID")
 		response.JSON(w, http.StatusBadRequest, false, "Invalid order ID", nil)
 		return
 	}
@@ -81,6 +85,7 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.WarnContext(r.Context(), "invalid request body")
 		response.JSON(w, http.StatusBadRequest, false, "Invalid request body", nil)
 		return
 	}
@@ -112,12 +117,14 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		h.logger.WarnContext(r.Context(), "invalid order ID")
 		http.Error(w, "Invalid order ID", http.StatusBadRequest)
 		return
 	}
 
 	var req dto.UpdateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.WarnContext(r.Context(), "invalid request body")
 		response.JSON(w, http.StatusBadRequest, false, "Invalid request body", nil)
 		return
 	}
@@ -148,6 +155,7 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		h.logger.WarnContext(r.Context(), "invalid order ID")
 		response.JSON(w, http.StatusBadRequest, false, "Invalid order ID", nil)
 		return
 	}

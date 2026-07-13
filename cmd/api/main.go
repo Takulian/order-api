@@ -60,7 +60,7 @@ func main() {
 	repo := repository.NewPostgresRepository(db)
 	cache := cache.NewRedisCache(rdb)
 	service := service.NewOrderService(repo, cache, logger)
-	orderHandler := handler.NewOrderHandler(service)
+	orderHandler := handler.NewOrderHandler(service, logger)
 	router := router.NewRouter(orderHandler)
 	logger.Info("starting server", "port", 8080)
 	if err := http.ListenAndServe(":8080", router); err != nil {
