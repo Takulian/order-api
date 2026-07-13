@@ -46,7 +46,7 @@ func (s *OrderService) GetAll(ctx context.Context) ([]model.Order, error) {
 	}
 
 	if err := s.cache.SetAll(ctx, cacheKey, orders, 5*time.Minute); err != nil {
-		s.logger.ErrorContext(ctx, "gagal simpan cache", "error", err)
+		s.logger.WarnContext(ctx, "gagal simpan orders ke cache", "error", err)
 	}
 
 	return orders, nil
@@ -59,11 +59,11 @@ func (s *OrderService) GetByID(ctx context.Context, id int) (model.Order, error)
 	}
 	order, err := s.repository.GetByID(id)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "gagal ambil data", "error", err)
+		s.logger.WarnContext(ctx, "order tidak ditemukan", "order_id", id, "error", err)
 		return model.Order{}, err
 	}
 	if err := s.cache.SetByID(ctx, idKey, order, 5*time.Minute); err != nil {
-		s.logger.ErrorContext(ctx, "gagal simpan cache", "error", err)
+		s.logger.WarnContext(ctx, "gagal simpan cache", "error", err)
 	}
 
 	return order, nil
@@ -71,12 +71,15 @@ func (s *OrderService) GetByID(ctx context.Context, id int) (model.Order, error)
 
 func (s *OrderService) Create(ctx context.Context, req dto.CreateOrderRequest) (model.Order, error) {
 	if req.Customer == "" {
+		s.logger.WarnContext(ctx, "validasi gagal: customer kosong")
 		return model.Order{}, ErrCustomerRequired
 	}
 	if req.Product == "" {
+		s.logger.WarnContext(ctx, "validasi gagal: product kosong")
 		return model.Order{}, ErrProductRequired
 	}
 	if req.Quantity <= 0 {
+		s.logger.WarnContext(ctx, "validasi gagal: quantity tidak valid")
 		return model.Order{}, ErrInvalidQuantity
 	}
 
@@ -87,12 +90,14 @@ func (s *OrderService) Create(ctx context.Context, req dto.CreateOrderRequest) (
 		Status:   "Pending",
 	})
 	if err != nil {
-		s.logger.ErrorContext(ctx, "gagal membuat order", "error", err)
+		s.logger.ErrorContext(ctx, "gagal membuat order", "customer", req.Customer, "error", err)
 		return model.Order{}, err
 	}
 
+	s.logger.InfoContext(ctx, "order berhasil dibuat", "order_id", order.ID)
+
 	if err := s.cache.Del(ctx, cacheKey); err != nil {
-		s.logger.ErrorContext(ctx, "gagal hapus cache", "error", err)
+		s.logger.WarnContext(ctx, "gagal hapus cache", "error", err)
 	}
 
 	return order, nil
@@ -100,17 +105,19 @@ func (s *OrderService) Create(ctx context.Context, req dto.CreateOrderRequest) (
 
 func (s *OrderService) Update(ctx context.Context, id int, req dto.UpdateOrderRequest) (model.Order, error) {
 	if req.Customer == "" {
+		s.logger.WarnContext(ctx, "validasi gagal: customer kosong")
 		return model.Order{}, ErrCustomerRequired
 	}
 	if req.Product == "" {
+		s.logger.WarnContext(ctx, "validasi gagal: product kosong")
 		return model.Order{}, ErrProductRequired
 	}
 	if req.Quantity <= 0 {
+		s.logger.WarnContext(ctx, "validasi gagal: quantity tidak valid")
 		return model.Order{}, ErrInvalidQuantity
 	}
 	order, err := s.GetByID(ctx, id)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "gagal ambil data", "error", err)
 		return model.Order{}, err
 	}
 
@@ -120,14 +127,17 @@ func (s *OrderService) Update(ctx context.Context, id int, req dto.UpdateOrderRe
 
 	updatedOrder, err := s.repository.Update(id, order)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "gagal update data", "error", err)
+		s.logger.ErrorContext(ctx, "gagal update data", "order_id", order.ID, "error", err)
 		return model.Order{}, err
 	}
+
+	s.logger.InfoContext(ctx, "order berhasil diupdate", "order_id", order.ID)
+
 	if err := s.cache.Del(ctx, cacheKey); err != nil {
-		s.logger.ErrorContext(ctx, "gagal hapus cache", "error", err)
+		s.logger.WarnContext(ctx, "gagal hapus cache", "error", err)
 	}
 	if err := s.cache.Del(ctx, fmt.Sprintf("orders:%d", id)); err != nil {
-		s.logger.ErrorContext(ctx, "gagal hapus cache", "error", err)
+		s.logger.WarnContext(ctx, "gagal hapus cache", "error", err)
 	}
 
 	return updatedOrder, nil
@@ -136,14 +146,14 @@ func (s *OrderService) Update(ctx context.Context, id int, req dto.UpdateOrderRe
 func (s *OrderService) Delete(ctx context.Context, id int) error {
 	err := s.repository.Delete(id)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "gagal hapus data", "error", err)
+		s.logger.ErrorContext(ctx, "gagal hapus data", "order_id", id, "error", err)
 		return err
 	}
 	if err := s.cache.Del(ctx, cacheKey); err != nil {
-		s.logger.ErrorContext(ctx, "gagal hapus cache", "error", err)
+		s.logger.WarnContext(ctx, "gagal hapus cache", "error", err)
 	}
 	if err := s.cache.Del(ctx, fmt.Sprintf("orders:%d", id)); err != nil {
-		s.logger.ErrorContext(ctx, "gagal hapus cache", "error", err)
+		s.logger.WarnContext(ctx, "gagal hapus cache", "error", err)
 	}
 
 	return nil
