@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"order-api/internal/cache"
 	"order-api/internal/config"
@@ -22,7 +23,14 @@ import (
 // @BasePath /
 func main() {
 	ctx := context.Background()
-	logger, shutdown, err := observability.InitLogging(ctx, "order-api")
+
+	cfg, err := config.Load()
+	if err != nil {
+		log.Println("gagal load config")
+		panic(err)
+	}
+
+	logger, shutdown, err := observability.InitLogging(ctx, "order-api", cfg.Telemetry)
 	if err != nil {
 		panic(err)
 	}
@@ -33,13 +41,6 @@ func main() {
 	}()
 
 	logger.Info("Logger berhasil di inisiasi")
-
-	cfg, err := config.Load()
-	if err != nil {
-		logger.Error("gagal load config", "error", err)
-		panic(err)
-	}
-
 	db, err := database.NewPostgresDB(cfg.Database)
 	if err != nil {
 		logger.Error("gagal konek database", "error", err)
