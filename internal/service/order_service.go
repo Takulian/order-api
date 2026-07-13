@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
 	"order-api/internal/cache"
 	"order-api/internal/dto"
 	"order-api/internal/model"
@@ -14,15 +15,18 @@ import (
 type OrderService struct {
 	repository repository.OrderRepository
 	cache      cache.OrderCache
+	logger     *slog.Logger
 }
 
 func NewOrderService(
 	repository repository.OrderRepository,
 	cache cache.OrderCache,
+	logger *slog.Logger,
 ) *OrderService {
 	return &OrderService{
 		repository: repository,
 		cache:      cache,
+		logger:     logger,
 	}
 }
 
@@ -37,10 +41,13 @@ func (s *OrderService) GetAll(ctx context.Context) ([]model.Order, error) {
 
 	orders, err := s.repository.GetAll()
 	if err != nil {
+		s.logger.ErrorContext(ctx, "gagal ambil data", "error", err)
 		return nil, err
 	}
 
-	_ = s.cache.SetAll(ctx, cacheKey, orders, 5*time.Minute)
+	if err := s.cache.SetAll(ctx, cacheKey, orders, 5*time.Minute); err != nil {
+		s.logger.ErrorContext(ctx, "gagal simpan cache", "error", err)
+	}
 
 	return orders, nil
 }
@@ -52,9 +59,12 @@ func (s *OrderService) GetByID(ctx context.Context, id int) (model.Order, error)
 	}
 	order, err := s.repository.GetByID(id)
 	if err != nil {
+		s.logger.ErrorContext(ctx, "gagal ambil data", "error", err)
 		return model.Order{}, err
 	}
-	_ = s.cache.SetByID(ctx, idKey, order, 5*time.Minute)
+	if err := s.cache.SetByID(ctx, idKey, order, 5*time.Minute); err != nil {
+		s.logger.ErrorContext(ctx, "gagal simpan cache", "error", err)
+	}
 
 	return order, nil
 }
@@ -77,10 +87,13 @@ func (s *OrderService) Create(ctx context.Context, req dto.CreateOrderRequest) (
 		Status:   "Pending",
 	})
 	if err != nil {
+		s.logger.ErrorContext(ctx, "gagal membuat order", "error", err)
 		return model.Order{}, err
 	}
 
-	_ = s.cache.Del(ctx, cacheKey)
+	if err := s.cache.Del(ctx, cacheKey); err != nil {
+		s.logger.ErrorContext(ctx, "gagal hapus cache", "error", err)
+	}
 
 	return order, nil
 }
@@ -97,6 +110,7 @@ func (s *OrderService) Update(ctx context.Context, id int, req dto.UpdateOrderRe
 	}
 	order, err := s.GetByID(ctx, id)
 	if err != nil {
+		s.logger.ErrorContext(ctx, "gagal ambil data", "error", err)
 		return model.Order{}, err
 	}
 
@@ -106,10 +120,15 @@ func (s *OrderService) Update(ctx context.Context, id int, req dto.UpdateOrderRe
 
 	updatedOrder, err := s.repository.Update(id, order)
 	if err != nil {
+		s.logger.ErrorContext(ctx, "gagal update data", "error", err)
 		return model.Order{}, err
 	}
-	_ = s.cache.Del(ctx, cacheKey)
-	_ = s.cache.Del(ctx, fmt.Sprintf("orders:%d", id))
+	if err := s.cache.Del(ctx, cacheKey); err != nil {
+		s.logger.ErrorContext(ctx, "gagal hapus cache", "error", err)
+	}
+	if err := s.cache.Del(ctx, fmt.Sprintf("orders:%d", id)); err != nil {
+		s.logger.ErrorContext(ctx, "gagal hapus cache", "error", err)
+	}
 
 	return updatedOrder, nil
 }
@@ -117,8 +136,15 @@ func (s *OrderService) Update(ctx context.Context, id int, req dto.UpdateOrderRe
 func (s *OrderService) Delete(ctx context.Context, id int) error {
 	err := s.repository.Delete(id)
 	if err != nil {
+		s.logger.ErrorContext(ctx, "gagal hapus data", "error", err)
 		return err
 	}
-	_ = s.cache.Del(ctx, cacheKey)
+	if err := s.cache.Del(ctx, cacheKey); err != nil {
+		s.logger.ErrorContext(ctx, "gagal hapus cache", "error", err)
+	}
+	if err := s.cache.Del(ctx, fmt.Sprintf("orders:%d", id)); err != nil {
+		s.logger.ErrorContext(ctx, "gagal hapus cache", "error", err)
+	}
+
 	return nil
 }

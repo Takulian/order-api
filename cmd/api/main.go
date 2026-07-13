@@ -1,17 +1,16 @@
 package main
 
 import (
-	"context"
-	"log"
+	"log/slog"
 	"net/http"
 	"order-api/internal/cache"
 	"order-api/internal/config"
 	"order-api/internal/database"
 	"order-api/internal/handler"
-	"order-api/internal/observability"
 	"order-api/internal/repository"
 	"order-api/internal/router"
 	"order-api/internal/service"
+	"os"
 
 	_ "order-api/docs"
 )
@@ -22,47 +21,40 @@ import (
 // @host localhost:8080
 // @BasePath /
 func main() {
-	ctx := context.Background()
+	handlerLog := slog.NewJSONHandler(os.Stdout, nil)
+	logger := slog.New(handlerLog)
+
+	logger.Info("Logger berhasil di inisiasi")
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("gagal load config: %v", err)
+		logger.Error("gagal load config", "error", err)
+		panic(err)
 	}
-
-	logger, shutdown, err := observability.InitLogging(ctx, cfg.Telemetry)
-	if err != nil {
-		log.Fatalf("gagal setup logging: %v", err)
-	}
-	defer func() {
-		if err := shutdown(ctx); err != nil {
-			log.Printf("gagal shutdown logging: %v", err)
-		}
-	}()
-
-	logger.Info("order-api starting up")
 
 	db, err := database.NewPostgresDB(cfg.Database)
 	if err != nil {
-		logger.Error("koneksi ke database gagal", "error", err)
+		logger.Error("gagal konek database", "error", err)
 		panic(err)
 	}
 	defer db.Close()
-	logger.Info("koneksi ke database berhasil")
+	logger.Info("berhasil konek ke database")
 
 	rdb, err := database.NewRedis(cfg.Redis)
 	if err != nil {
-		logger.Error("koneksi ke redis gagal", "error", err)
+		logger.Error("gagal konek redis", "error", err)
 		panic(err)
 	}
 	defer rdb.Close()
-	logger.Info("koneksi ke redis berhasil")
+	logger.Info("berhasil konek ke redis")
 
 	repo := repository.NewPostgresRepository(db)
 	cache := cache.NewRedisCache(rdb)
-	service := service.NewOrderService(repo, cache)
+	service := service.NewOrderService(repo, cache, logger)
 	orderHandler := handler.NewOrderHandler(service)
 	router := router.NewRouter(orderHandler)
-	log.Println("Starting server on :8080")
+	logger.Info("starting server", "port", 8080)
 	if err := http.ListenAndServe(":8080", router); err != nil {
-		log.Fatal(err)
+		logger.Error("server berhenti", "error", err)
 	}
 }
