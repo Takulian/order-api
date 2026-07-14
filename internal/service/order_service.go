@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"order-api/internal/cache"
@@ -57,11 +58,16 @@ func (s *OrderService) GetByID(ctx context.Context, id int) (model.Order, error)
 	if order, err := s.cache.GetByID(ctx, id, idKey); err == nil {
 		return order, nil
 	}
+
 	order, err := s.repository.GetByID(id)
 	if err != nil {
-		s.logger.WarnContext(ctx, "order tidak ditemukan", "order_id", id, "error", err)
+
+		if errors.Is(err, ErrOrderNotFound) {
+			return model.Order{}, ErrOrderNotFound
+		}
 		return model.Order{}, err
 	}
+
 	if err := s.cache.SetByID(ctx, idKey, order, 5*time.Minute); err != nil {
 		s.logger.WarnContext(ctx, "gagal simpan cache", "error", err)
 	}
@@ -146,6 +152,9 @@ func (s *OrderService) Update(ctx context.Context, id int, req dto.UpdateOrderRe
 func (s *OrderService) Delete(ctx context.Context, id int) error {
 	err := s.repository.Delete(id)
 	if err != nil {
+		if errors.Is(err, ErrOrderNotFound) {
+			return ErrOrderNotFound
+		}
 		s.logger.ErrorContext(ctx, "gagal hapus data", "order_id", id, "error", err)
 		return err
 	}
