@@ -3,17 +3,25 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"order-api/internal/cache"
 	"order-api/internal/config"
 	"order-api/internal/database"
+	"order-api/internal/grpcserver"
 	"order-api/internal/handler"
 	"order-api/internal/observability"
 	"order-api/internal/repository"
 	"order-api/internal/router"
 	"order-api/internal/service"
+	orderv1 "order-api/proto/order/v1"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	_ "order-api/docs"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // @title Order API
@@ -40,7 +48,6 @@ func main() {
 		}
 	}()
 
-	logger.Info("Logger berhasil di inisiasi")
 	db, err := database.NewPostgresDB(cfg.Database)
 	if err != nil {
 		logger.Error("gagal konek database", "error", err)
@@ -62,8 +69,41 @@ func main() {
 	service := service.NewOrderService(repo, cache, logger)
 	orderHandler := handler.NewOrderHandler(service, logger)
 	router := router.NewRouter(orderHandler)
-	logger.Info("starting server", "port", 8080)
-	if err := http.ListenAndServe(":8080", router); err != nil {
-		logger.Error("server berhenti", "error", err)
+
+	go func() {
+		logger.Info("starting server", "port", 8080)
+		if err := http.ListenAndServe(":8080", router); err != nil {
+			logger.Error("server berhenti", "error", err)
+		}
+	}()
+
+	grpcOrderServer := grpcserver.NewOrderGRPCServer(service)
+	grpcServer := grpc.NewServer()
+	orderv1.RegisterOrderServiceServer(grpcServer, grpcOrderServer)
+
+	go func() {
+		lis, err := net.Listen("tcp", ":9090")
+		if err != nil {
+			logger.Error("gRPC listener error", "error", err)
+		}
+		logger.Info("gRPC server listening on :9090")
+		if err := grpcServer.Serve(lis); err != nil {
+			logger.Error("gRPC server error", "error", err)
+		}
+	}()
+
+	gwMux := runtime.NewServeMux()
+	if err := orderv1.RegisterOrderServiceHandlerFromEndpoint(
+		ctx,
+		gwMux,
+		"localhost:9090",
+		[]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
+	); err != nil {
+		logger.Error("gateway registration error", "error", err)
+	}
+
+	logger.Info("gRPC-gateway listening on :8081")
+	if err := http.ListenAndServe(":8081", gwMux); err != nil {
+		logger.Error("gateway server error", "error", err)
 	}
 }

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package = order.v1;
+package order.v1;
 
 option go_package = "order-api/gen/order/v1;orderv1";
 
@@ -62,13 +62,13 @@ service OrderService {
         };
     }
 
-    rpc GetOrderByID(GetOrderByIDRequest) returns (GetOrdersResponse){
+    rpc GetOrderByID(GetOrderByIDRequest) returns (GetOrderByIDResponse){
         option (google.api.http) = {
             get: "/v1/orders/{id}"
         };
     }
 
-    rpc CreateOrder(CreateOrderRequest) returns (CreateOrdersResponse){
+    rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse){
         option (google.api.http) = {
             post: "/v1/orders"
             body: "*"
@@ -83,7 +83,7 @@ service OrderService {
     }
 
     rpc DeleteOrder(DeleteOrderRequest) returns (DeleteOrderResponse){
-        option (google.appi.http) = {
+        option (google.api.http) = {
             delete: "/v1/orders/{id}"
         };
     }
