@@ -62,7 +62,7 @@ func (s *OrderService) GetByID(ctx context.Context, id int) (model.Order, error)
 	order, err := s.repository.GetByID(id)
 	if err != nil {
 
-		if errors.Is(err, ErrOrderNotFound) {
+		if errors.Is(err, repository.ErrOrderNotFound) {
 			return model.Order{}, ErrOrderNotFound
 		}
 		return model.Order{}, err
