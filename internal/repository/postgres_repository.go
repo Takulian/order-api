@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"errors"
 	"order-api/internal/model"
 )
 
@@ -56,7 +55,7 @@ func (r *PostgresRepository) GetByID(id int) (model.Order, error) {
 		&order.Status,
 	)
 	if err != nil {
-		return model.Order{}, errors.New("order not found")
+		return model.Order{}, ErrOrderNotFound
 	}
 	return order, nil
 }
@@ -74,14 +73,14 @@ func (r *PostgresRepository) Update(id int, order model.Order) (model.Order, err
 	query := `UPDATE orders SET customer = $1, product = $2, quantity = $3, status = $4 WHERE id = $5`
 	result, err := r.db.Exec(query, order.Customer, order.Product, order.Quantity, order.Status, order.ID)
 	if err != nil {
-		return model.Order{}, errors.New("failed to update order")
+		return model.Order{}, err
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return model.Order{}, errors.New("failed to retrieve rows affected")
+		return model.Order{}, err
 	}
 	if rowsAffected == 0 {
-		return model.Order{}, errors.New("order not found")
+		return model.Order{}, ErrOrderNotFound
 	}
 	return order, nil
 }
@@ -99,7 +98,7 @@ func (r *PostgresRepository) Delete(id int) error {
 	}
 
 	if rowsAffected == 0 {
-		return errors.New("order not found")
+		return ErrOrderNotFound
 	}
 
 	return nil
