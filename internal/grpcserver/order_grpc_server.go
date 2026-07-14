@@ -32,7 +32,7 @@ func toProtoOrder(o model.Order) *orderv1.Order {
 func (s *OrderGRPCServer) GetOrders(ctx context.Context, req *orderv1.GetOrdersRequest) (*orderv1.GetOrdersResponse, error) {
 	orders, err := s.service.GetAll(ctx)
 	if err != nil {
-		return nil, err
+		return nil, toGRPCError(err)
 	}
 
 	protoOrders := make([]*orderv1.Order, 0, len(orders))
@@ -48,7 +48,7 @@ func (s *OrderGRPCServer) GetOrders(ctx context.Context, req *orderv1.GetOrdersR
 func (s *OrderGRPCServer) GetOrderByID(ctx context.Context, req *orderv1.GetOrderByIDRequest) (*orderv1.GetOrderByIDResponse, error) {
 	order, err := s.service.GetByID(ctx, int(req.Id))
 	if err != nil {
-		return nil, err
+		return nil, toGRPCError(err)
 	}
 	return &orderv1.GetOrderByIDResponse{
 		Order: toProtoOrder(order),
@@ -64,7 +64,7 @@ func (s *OrderGRPCServer) CreateOrder(ctx context.Context, req *orderv1.CreateOr
 
 	order, err := s.service.Create(ctx, dtoReq)
 	if err != nil {
-		return nil, err
+		return nil, toGRPCError(err)
 	}
 
 	return &orderv1.CreateOrderResponse{
@@ -81,7 +81,7 @@ func (s *OrderGRPCServer) UpdateOrder(ctx context.Context, req *orderv1.UpdateOr
 
 	order, err := s.service.Update(ctx, int(req.Id), dtoReq)
 	if err != nil {
-		return nil, err
+		return nil, toGRPCError(err)
 	}
 
 	return &orderv1.UpdateOrderResponse{
@@ -92,7 +92,7 @@ func (s *OrderGRPCServer) UpdateOrder(ctx context.Context, req *orderv1.UpdateOr
 func (s *OrderGRPCServer) DeleteOrder(ctx context.Context, req *orderv1.DeleteOrderRequest) (*orderv1.DeleteOrderResponse, error) {
 	err := s.service.Delete(ctx, int(req.Id))
 	if err != nil {
-		return nil, err
+		return nil, toGRPCError(err)
 	}
 	return &orderv1.DeleteOrderResponse{}, nil
 }
