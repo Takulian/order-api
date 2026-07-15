@@ -7,6 +7,7 @@ import (
 	"order-api/internal/dto"
 	"order-api/internal/mocks"
 	"order-api/internal/model"
+	"order-api/internal/repository"
 	"order-api/internal/service"
 	"reflect"
 	"testing"
@@ -14,22 +15,31 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func setupTest(t *testing.T) (*service.OrderService, *mocks.MockOrderRepository, *mocks.MockOrderCache) {
+type testDeps struct {
+	repo      *mocks.MockOrderRepository
+	cache     *mocks.MockOrderCache
+	publisher *mocks.MockPublisher
+}
+
+func setupTest(t *testing.T) (*service.OrderService, *testDeps) {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
 
-	mockRepo := mocks.NewMockOrderRepository(ctrl)
-	mockCache := mocks.NewMockOrderCache(ctrl)
-	logger := slog.New(slog.DiscardHandler)
+	deps := &testDeps{
+		repo:      mocks.NewMockOrderRepository(ctrl),
+		cache:     mocks.NewMockOrderCache(ctrl),
+		publisher: mocks.NewMockPublisher(ctrl),
+	}
 
-	s := service.NewOrderService(mockRepo, mockCache, logger)
+	logger := slog.New(slog.DiscardHandler)
+	s := service.NewOrderService(deps.repo, deps.cache, deps.publisher, logger)
 
 	t.Cleanup(func() {
 		defer ctrl.Finish()
 	})
 
-	return s, mockRepo, mockCache
+	return s, deps
 }
 
 func TestOrderService_GetAll(t *testing.T) {
@@ -53,53 +63,53 @@ func TestOrderService_GetAll(t *testing.T) {
 		name    string
 		want    []model.Order
 		wantErr bool
-		setup   func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache)
+		setup   func(d *testDeps)
 	}{
 		{
 			name:    "get orders with all connection ok and have cache",
 			want:    expected,
 			wantErr: false,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetAll(gomock.Any(), "orders").Return(expected, nil)
-				mockRepo.EXPECT().GetAll().Times(0)
-				mockCache.EXPECT().SetAll(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetAll(gomock.Any(), "orders").Return(expected, nil)
+				d.repo.EXPECT().GetAll().Times(0)
+				d.cache.EXPECT().SetAll(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
 			name:    "get orders with all connection ok no cache then get from database and cache it",
 			want:    expected,
 			wantErr: false,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetAll(gomock.Any(), "orders").Return(nil, errors.New("no cache data"))
-				mockRepo.EXPECT().GetAll().Return(expected, nil)
-				mockCache.EXPECT().SetAll(gomock.Any(), "orders", expected, gomock.Any()).Return(nil)
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetAll(gomock.Any(), "orders").Return(nil, errors.New("no cache data"))
+				d.repo.EXPECT().GetAll().Return(expected, nil)
+				d.cache.EXPECT().SetAll(gomock.Any(), "orders", expected, gomock.Any()).Return(nil)
 			},
 		},
 		{
 			name:    "get orders when repository returns error",
 			want:    nil,
 			wantErr: true,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetAll(gomock.Any(), "orders").Return(nil, errors.New("no cache data"))
-				mockRepo.EXPECT().GetAll().Return(nil, errors.New("db error"))
-				mockCache.EXPECT().SetAll(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetAll(gomock.Any(), "orders").Return(nil, errors.New("no cache data"))
+				d.repo.EXPECT().GetAll().Return(nil, errors.New("db error"))
+				d.cache.EXPECT().SetAll(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
 			name:    "get orders with database ok but redis error and response ok",
 			want:    expected,
 			wantErr: false,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetAll(gomock.Any(), "orders").Return(nil, errors.New("no cache data"))
-				mockRepo.EXPECT().GetAll().Return(expected, nil)
-				mockCache.EXPECT().SetAll(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetAll(gomock.Any(), "orders").Return(nil, errors.New("no cache data"))
+				d.repo.EXPECT().GetAll().Return(expected, nil)
+				d.cache.EXPECT().SetAll(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, mockRepo, mockCache := setupTest(t)
-			tt.setup(mockRepo, mockCache)
+			s, deps := setupTest(t)
+			tt.setup(deps)
 			got, gotErr := s.GetAll(context.Background())
 			if (gotErr != nil) != tt.wantErr {
 				t.Fatalf("error = %v, wantErr = %v", gotErr, tt.wantErr)
@@ -124,17 +134,17 @@ func TestOrderService_GetByID(t *testing.T) {
 		id      int
 		want    model.Order
 		wantErr bool
-		setup   func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache)
+		setup   func(d *testDeps)
 	}{
 		{
 			name:    "input id with normal condition with cache has data then succes response no error",
 			id:      1,
 			want:    expected,
 			wantErr: false,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(expected, nil)
-				mockRepo.EXPECT().GetByID(1).Times(0)
-				mockCache.EXPECT().SetByID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(expected, nil)
+				d.repo.EXPECT().GetByID(1).Times(0)
+				d.cache.EXPECT().SetByID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -142,10 +152,21 @@ func TestOrderService_GetByID(t *testing.T) {
 			id:      1,
 			want:    expected,
 			wantErr: false,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(model.Order{}, errors.New("cache not found"))
-				mockRepo.EXPECT().GetByID(1).Return(expected, nil)
-				mockCache.EXPECT().SetByID(gomock.Any(), gomock.Any(), expected, gomock.Any()).Return(nil)
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(model.Order{}, errors.New("cache not found"))
+				d.repo.EXPECT().GetByID(1).Return(expected, nil)
+				d.cache.EXPECT().SetByID(gomock.Any(), gomock.Any(), expected, gomock.Any()).Return(nil)
+			},
+		},
+		{
+			name:    "input unknown id with normal condition then not found response",
+			id:      67,
+			want:    model.Order{},
+			wantErr: true,
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetByID(gomock.Any(), 67, gomock.Any()).Return(model.Order{}, errors.New("cache not found"))
+				d.repo.EXPECT().GetByID(67).Return(model.Order{}, repository.ErrOrderNotFound)
+				d.cache.EXPECT().SetByID(gomock.Any(), gomock.Any(), expected, gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -153,10 +174,10 @@ func TestOrderService_GetByID(t *testing.T) {
 			id:      1,
 			want:    expected,
 			wantErr: false,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(model.Order{}, errors.New("connection error"))
-				mockRepo.EXPECT().GetByID(1).Return(expected, nil)
-				mockCache.EXPECT().SetByID(gomock.Any(), gomock.Any(), expected, gomock.Any()).Return(errors.New("connection error"))
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(model.Order{}, errors.New("connection error"))
+				d.repo.EXPECT().GetByID(1).Return(expected, nil)
+				d.cache.EXPECT().SetByID(gomock.Any(), gomock.Any(), expected, gomock.Any()).Return(errors.New("connection error"))
 			},
 		},
 		{
@@ -164,10 +185,10 @@ func TestOrderService_GetByID(t *testing.T) {
 			id:      1,
 			want:    model.Order{},
 			wantErr: true,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(model.Order{}, errors.New("cache not found"))
-				mockRepo.EXPECT().GetByID(1).Return(model.Order{}, errors.New("db error"))
-				mockCache.EXPECT().SetByID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(model.Order{}, errors.New("cache not found"))
+				d.repo.EXPECT().GetByID(1).Return(model.Order{}, errors.New("db error"))
+				d.cache.EXPECT().SetByID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -175,17 +196,17 @@ func TestOrderService_GetByID(t *testing.T) {
 			id:      1,
 			want:    expected,
 			wantErr: false,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(model.Order{}, errors.New("cache not found"))
-				mockRepo.EXPECT().GetByID(1).Return(expected, nil)
-				mockCache.EXPECT().SetByID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(model.Order{}, errors.New("cache not found"))
+				d.repo.EXPECT().GetByID(1).Return(expected, nil)
+				d.cache.EXPECT().SetByID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, mockRepo, mockCache := setupTest(t)
-			tt.setup(mockRepo, mockCache)
+			s, deps := setupTest(t)
+			tt.setup(deps)
 			got, gotErr := s.GetByID(context.Background(), tt.id)
 			if (gotErr != nil) != tt.wantErr {
 				t.Fatalf("error = %v, wantErr = %v", gotErr, tt.wantErr)
@@ -211,7 +232,7 @@ func TestOrderService_Create(t *testing.T) {
 		req     dto.CreateOrderRequest
 		want    model.Order
 		wantErr error
-		setup   func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache)
+		setup   func(d *testDeps)
 	}{
 		{
 			name: "create order with all input correct all connection ok then response success",
@@ -222,14 +243,15 @@ func TestOrderService_Create(t *testing.T) {
 			},
 			want:    expected,
 			wantErr: nil,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Create(model.Order{
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Create(model.Order{
 					Customer: "Andi",
 					Product:  "Laptop",
 					Quantity: 12,
 					Status:   "Pending",
 				}).Return(expected, nil)
-				mockCache.EXPECT().Del(gomock.Any(), "orders").Return(nil)
+				d.cache.EXPECT().Del(gomock.Any(), "orders").Return(nil)
+				d.publisher.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			},
 		},
 		{
@@ -241,9 +263,10 @@ func TestOrderService_Create(t *testing.T) {
 			},
 			want:    model.Order{},
 			wantErr: service.ErrCustomerRequired,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Create(gomock.Any()).Times(0)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Create(gomock.Any()).Times(0)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+				d.publisher.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -255,9 +278,10 @@ func TestOrderService_Create(t *testing.T) {
 			},
 			want:    model.Order{},
 			wantErr: service.ErrProductRequired,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Create(gomock.Any()).Times(0)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Create(gomock.Any()).Times(0)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+				d.publisher.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -269,9 +293,10 @@ func TestOrderService_Create(t *testing.T) {
 			},
 			want:    model.Order{},
 			wantErr: service.ErrInvalidQuantity,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Create(gomock.Any()).Times(0)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Create(gomock.Any()).Times(0)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+				d.publisher.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -283,14 +308,15 @@ func TestOrderService_Create(t *testing.T) {
 			},
 			want:    model.Order{},
 			wantErr: dbErr,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Create(model.Order{
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Create(model.Order{
 					Customer: "Andi",
 					Product:  "Laptop",
 					Quantity: 12,
 					Status:   "Pending",
 				}).Return(model.Order{}, dbErr)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+				d.publisher.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -302,21 +328,22 @@ func TestOrderService_Create(t *testing.T) {
 			},
 			want:    expected,
 			wantErr: nil,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Create(model.Order{
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Create(model.Order{
 					Customer: "Andi",
 					Product:  "Laptop",
 					Quantity: 12,
 					Status:   "Pending",
 				}).Return(expected, nil)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
+				d.publisher.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, mockRepo, mockCache := setupTest(t)
-			tt.setup(mockRepo, mockCache)
+			s, deps := setupTest(t)
+			tt.setup(deps)
 			got, gotErr := s.Create(context.Background(), tt.req)
 			if !errors.Is(gotErr, tt.wantErr) {
 				t.Errorf("expected error %v, got %v", tt.wantErr, gotErr)
@@ -351,7 +378,7 @@ func TestOrderService_Update(t *testing.T) {
 		req     dto.UpdateOrderRequest
 		want    model.Order
 		wantErr error
-		setup   func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache)
+		setup   func(d *testDeps)
 	}{
 		{
 			name: "update order with valid input",
@@ -363,11 +390,11 @@ func TestOrderService_Update(t *testing.T) {
 			},
 			want:    updated,
 			wantErr: nil,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(current, nil)
-				mockRepo.EXPECT().Update(1, updated).Return(updated, nil)
-				mockCache.EXPECT().Del(gomock.Any(), "orders").Return(nil)
-				mockCache.EXPECT().Del(gomock.Any(), "orders:1").Return(nil)
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(current, nil)
+				d.repo.EXPECT().Update(1, updated).Return(updated, nil)
+				d.cache.EXPECT().Del(gomock.Any(), "orders").Return(nil)
+				d.cache.EXPECT().Del(gomock.Any(), "orders:1").Return(nil)
 			},
 		},
 		{
@@ -380,9 +407,9 @@ func TestOrderService_Update(t *testing.T) {
 			},
 			want:    model.Order{},
 			wantErr: service.ErrCustomerRequired,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -395,9 +422,9 @@ func TestOrderService_Update(t *testing.T) {
 			},
 			want:    model.Order{},
 			wantErr: service.ErrProductRequired,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -410,9 +437,9 @@ func TestOrderService_Update(t *testing.T) {
 			},
 			want:    model.Order{},
 			wantErr: service.ErrInvalidQuantity,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -425,11 +452,11 @@ func TestOrderService_Update(t *testing.T) {
 			},
 			want:    model.Order{},
 			wantErr: dbErr,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(model.Order{}, errors.New("cache not found"))
-				mockRepo.EXPECT().GetByID(1).Return(model.Order{}, dbErr)
-				mockRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(model.Order{}, errors.New("cache not found"))
+				d.repo.EXPECT().GetByID(1).Return(model.Order{}, dbErr)
+				d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -442,10 +469,10 @@ func TestOrderService_Update(t *testing.T) {
 			},
 			want:    model.Order{},
 			wantErr: dbErr,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(current, nil)
-				mockRepo.EXPECT().Update(1, updated).Return(model.Order{}, dbErr)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(current, nil)
+				d.repo.EXPECT().Update(1, updated).Return(model.Order{}, dbErr)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
@@ -458,18 +485,18 @@ func TestOrderService_Update(t *testing.T) {
 			},
 			want:    updated,
 			wantErr: nil,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockCache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(current, nil)
-				mockRepo.EXPECT().Update(1, updated).Return(updated, nil)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
+			setup: func(d *testDeps) {
+				d.cache.EXPECT().GetByID(gomock.Any(), 1, gomock.Any()).Return(current, nil)
+				d.repo.EXPECT().Update(1, updated).Return(updated, nil)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, mockRepo, mockCache := setupTest(t)
-			tt.setup(mockRepo, mockCache)
+			s, deps := setupTest(t)
+			tt.setup(deps)
 			got, gotErr := s.Update(context.Background(), tt.id, tt.req)
 			if !errors.Is(gotErr, tt.wantErr) {
 				t.Errorf("expected error %v, got %v", tt.wantErr, gotErr)
@@ -487,44 +514,122 @@ func TestOrderService_Delete(t *testing.T) {
 		name    string
 		id      int
 		wantErr error
-		setup   func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache)
+		setup   func(d *testDeps)
 	}{
 		{
 			name:    "delete order successfully",
 			id:      1,
 			wantErr: nil,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Delete(1).Return(nil)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(nil)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(nil)
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Delete(1).Return(nil)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(nil)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(nil)
+			},
+		},
+		{
+			name:    "delete order with unknown id then not found response",
+			id:      67,
+			wantErr: service.ErrOrderNotFound,
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Delete(67).Return(repository.ErrOrderNotFound)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
 			name:    "delete order when repository returns error",
 			id:      1,
 			wantErr: dbErr,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Delete(1).Return(dbErr)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Delete(1).Return(dbErr)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Times(0)
 			},
 		},
 		{
 			name:    "delete order when repository ok but redis error and response ok",
 			id:      1,
 			wantErr: nil,
-			setup: func(mockRepo *mocks.MockOrderRepository, mockCache *mocks.MockOrderCache) {
-				mockRepo.EXPECT().Delete(1).Return(nil)
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
-				mockCache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
+			setup: func(d *testDeps) {
+				d.repo.EXPECT().Delete(1).Return(nil)
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
+				d.cache.EXPECT().Del(gomock.Any(), gomock.Any()).Return(errors.New("redis error"))
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, mockRepo, mockCache := setupTest(t)
-			tt.setup(mockRepo, mockCache)
+			s, deps := setupTest(t)
+			tt.setup(deps)
 			gotErr := s.Delete(context.Background(), tt.id)
+			if !errors.Is(gotErr, tt.wantErr) {
+				t.Errorf("expected error %v, got %v", tt.wantErr, gotErr)
+			}
+		})
+	}
+}
+
+func TestOrderService_Checkout(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     dto.CreateOrderRequest
+		wantErr error
+		setup   func(*testDeps)
+	}{
+		{
+			name: "hit checkout when publisher conn ok then response ok",
+			req: dto.CreateOrderRequest{
+				Customer: "Andi",
+				Product:  "Laptop",
+				Quantity: 10,
+			},
+			wantErr: nil,
+			setup: func(d *testDeps) {
+				d.publisher.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			},
+		},
+		{
+			name: "hit checkout with customer empty when publisher conn ok then response error",
+			req: dto.CreateOrderRequest{
+				Customer: "",
+				Product:  "Laptop",
+				Quantity: 10,
+			},
+			wantErr: service.ErrCustomerRequired,
+			setup: func(d *testDeps) {
+				d.publisher.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			},
+		},
+		{
+			name: "hit checkout with product empty when publisher conn ok then response error",
+			req: dto.CreateOrderRequest{
+				Customer: "Andi",
+				Product:  "",
+				Quantity: 10,
+			},
+			wantErr: service.ErrProductRequired,
+			setup: func(d *testDeps) {
+				d.publisher.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			},
+		},
+		{
+			name: "hit checkout with zero quantity when publisher conn ok then response error",
+			req: dto.CreateOrderRequest{
+				Customer: "Andi",
+				Product:  "Laptop",
+				Quantity: 0,
+			},
+			wantErr: service.ErrInvalidQuantity,
+			setup: func(d *testDeps) {
+				d.publisher.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, deps := setupTest(t)
+			tt.setup(deps)
+			gotErr := s.Checkout(t.Context(), tt.req)
 			if !errors.Is(gotErr, tt.wantErr) {
 				t.Errorf("expected error %v, got %v", tt.wantErr, gotErr)
 			}

@@ -167,7 +167,7 @@ func (s *OrderService) Update(ctx context.Context, id int, req dto.UpdateOrderRe
 func (s *OrderService) Delete(ctx context.Context, id int) error {
 	err := s.repository.Delete(id)
 	if err != nil {
-		if errors.Is(err, ErrOrderNotFound) {
+		if errors.Is(err, repository.ErrOrderNotFound) {
 			return ErrOrderNotFound
 		}
 		s.logger.ErrorContext(ctx, "gagal hapus data", "order_id", id, "error", err)
