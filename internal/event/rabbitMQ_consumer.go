@@ -65,21 +65,14 @@ func (c *RabbitMQConsumer) consume(ctx context.Context, queueName, routingKey st
 		return fmt.Errorf("gagal mulai consume: %w", err)
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case msg, ok := <-msgs:
-			if !ok {
-				return fmt.Errorf("channel pesan %s tertutup", queueName)
-			}
-			if err := handler(ctx, msg.Body); err != nil {
-				msg.Nack(false, true)
-				continue
-			}
-			msg.Ack(false)
+	for msg := range msgs {
+		if err := handler(ctx, msg.Body); err != nil {
+			msg.Nack(false, true)
+			continue
 		}
+		msg.Ack(false)
 	}
+	return fmt.Errorf("channel pesan %s tertutup", queueName)
 }
 
 func (c *RabbitMQConsumer) ConsumeOrderCreated(ctx context.Context, handler func(ctx context.Context, evt OrderCreatedEvent) error) error {
