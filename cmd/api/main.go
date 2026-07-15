@@ -8,6 +8,7 @@ import (
 	"order-api/internal/cache"
 	"order-api/internal/config"
 	"order-api/internal/database"
+	"order-api/internal/event"
 	"order-api/internal/grpcserver"
 	"order-api/internal/handler"
 	"order-api/internal/observability"
@@ -64,11 +65,45 @@ func main() {
 	defer rdb.Close()
 	logger.Info("berhasil konek ke redis")
 
+	rabbitConn, err := database.NewRabbitMQ(cfg.RabbitMQ.URL())
+	if err != nil {
+		logger.Error("gagal konek ke rabbitmq", "error", err)
+	}
+	defer rabbitConn.Close()
+
+	publisher, err := event.NewRabbitMQPublisher(rabbitConn)
+	if err != nil {
+		logger.Error("publisher error", "error", err)
+		panic(err)
+	}
+	defer publisher.Close()
+
 	repo := repository.NewPostgresRepository(db)
 	cache := cache.NewRedisCache(rdb)
-	service := service.NewOrderService(repo, cache, logger)
+	service := service.NewOrderService(repo, cache, publisher, logger)
 	orderHandler := handler.NewOrderHandler(service, logger)
 	router := router.NewRouter(orderHandler)
+
+	consumer, err := event.NewRabbitMQConsumer(rabbitConn)
+	if err != nil {
+		logger.Error("consumer error", "error", err)
+		panic(err)
+	}
+	defer consumer.Close()
+
+	go func() {
+		err := consumer.ConsumeOrderCreated(ctx, func(ctx context.Context, evt event.OrderCreatedEvent) error {
+			logger.InfoContext(ctx, "menerima order.created",
+				"order_id", evt.OrderID,
+				"consumer", evt.Customer,
+				"product", evt.Product,
+			)
+			return nil
+		})
+		if err != nil {
+			logger.Error("consumer order.created berhenti karena error", "error", err)
+		}
+	}()
 
 	go func() {
 		logger.Info("starting server", "port", 8080)

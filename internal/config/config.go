@@ -13,6 +13,7 @@ type Config struct {
 	Database  DatabaseConfig
 	Redis     RedisConfig
 	Telemetry TelemetryConfig
+	RabbitMQ  RabbitMQConfig
 }
 
 type AppConfig struct {
@@ -51,6 +52,17 @@ type TelemetryConfig struct {
 	OTLPEndpoint string
 }
 
+type RabbitMQConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+}
+
+func (r RabbitMQConfig) URL() string {
+	return fmt.Sprintf("amqp://%s:%s@%s:%s/", r.User, r.Password, r.Host, r.Port)
+}
+
 func Load() (*Config, error) {
 	if err := godotenv.Load(); err != nil {
 		log.Println("file .env tidak ditemukan, menggunakan env bawaan")
@@ -77,6 +89,12 @@ func Load() (*Config, error) {
 		Telemetry: TelemetryConfig{
 			ServiceName:  getEnv("OTEL_SERVICE_NAME", "order-api"),
 			OTLPEndpoint: getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318"),
+		},
+		RabbitMQ: RabbitMQConfig{
+			Host:     getEnv("RABBITMQ_HOST", "localhost"),
+			Port:     getEnv("RABBITMQ_PORT", "5672"),
+			User:     getEnv("RABBITMQ_USER", "guest"),
+			Password: getEnv("RABBITMQ_PASSWORD", "guest"),
 		},
 	}
 

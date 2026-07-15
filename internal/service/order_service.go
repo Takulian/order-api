@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"order-api/internal/cache"
 	"order-api/internal/dto"
+	"order-api/internal/event"
 	"order-api/internal/model"
 	"order-api/internal/repository"
 	"time"
@@ -16,17 +17,20 @@ import (
 type OrderService struct {
 	repository repository.OrderRepository
 	cache      cache.OrderCache
+	publisher  event.Publisher
 	logger     *slog.Logger
 }
 
 func NewOrderService(
 	repository repository.OrderRepository,
 	cache cache.OrderCache,
+	publisher event.Publisher,
 	logger *slog.Logger,
 ) *OrderService {
 	return &OrderService{
 		repository: repository,
 		cache:      cache,
+		publisher:  publisher,
 		logger:     logger,
 	}
 }
@@ -104,6 +108,17 @@ func (s *OrderService) Create(ctx context.Context, req dto.CreateOrderRequest) (
 
 	if err := s.cache.Del(ctx, cacheKey); err != nil {
 		s.logger.WarnContext(ctx, "gagal hapus cache", "error", err)
+	}
+
+	if err := s.publisher.Publish(ctx, event.RuotingKeyOrderCreated, event.OrderCreatedEvent{
+		OrderID:   order.ID,
+		Customer:  order.Customer,
+		Product:   order.Product,
+		Quantity:  order.Quantity,
+		Status:    order.Status,
+		Timestamp: time.Now(),
+	}); err != nil {
+		s.logger.ErrorContext(ctx, "gagal publish event order.created", "error", err, "order_id", order.ID)
 	}
 
 	return order, nil
