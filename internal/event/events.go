@@ -10,8 +10,14 @@ type OrderCreatedEvent struct {
 	Status    string    `json:"status"`
 	Timestamp time.Time `json:"timestamp"`
 }
+type CheckoutEvent struct {
+	Customer string `json:"customer"`
+	Product  string `json:"product"`
+	Quantity int    `json:"quantity"`
+}
 
 const (
-	RuotingKeyOrderCreated = "order.created"
+	RoutingKeyOrderCreated = "order.created"
+	RoutingKeyCheckout     = "order.checkout"
 	ExchangeOrderEvents    = "order.events"
 )

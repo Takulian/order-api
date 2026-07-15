@@ -7,7 +7,7 @@ import (
 	"order-api/internal/config"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
+	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/log/global"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -17,10 +17,7 @@ import (
 type Shutdown func(context.Context) error
 
 func InitLogging(ctx context.Context, serviceName string, cfg config.TelemetryConfig) (*slog.Logger, Shutdown, error) {
-	exporter, err := otlploghttp.New(ctx,
-		otlploghttp.WithEndpoint(cfg.OTLPEndpoint),
-		otlploghttp.WithInsecure(),
-	)
+	exporter, err := stdoutlog.New(stdoutlog.WithPrettyPrint())
 	if err != nil {
 		return nil, nil, fmt.Errorf("gagal membuat exporter: %w", err)
 	}

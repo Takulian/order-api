@@ -8,8 +8,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type OrderCreatedHandler func(ctx context.Context, evt OrderCreatedEvent) error
-
 type RabbitMQConsumer struct {
 	channel *amqp.Channel
 }
@@ -41,44 +39,27 @@ func NewRabbitMQConsumer(conn *amqp.Connection) (*RabbitMQConsumer, error) {
 	}, nil
 }
 
-func (c *RabbitMQConsumer) ConsumeOrderCreated(ctx context.Context, handler OrderCreatedHandler) error {
-	queueName := "order.created.queue"
-
+func (c *RabbitMQConsumer) consume(ctx context.Context, queueName, routingKey string, handler func(ctx context.Context, body []byte) error) error {
 	q, err := c.channel.QueueDeclare(
 		queueName,
-		true,
-		false,
-		false,
-		false,
-		nil,
+		true, false, false, false, nil,
 	)
 	if err != nil {
 		return fmt.Errorf("gagal deklarasi queue: %w", err)
 	}
 
 	err = c.channel.QueueBind(
-		q.Name,
-		RuotingKeyOrderCreated,
-		ExchangeOrderEvents,
-		false,
-		nil,
+		q.Name, routingKey, ExchangeOrderEvents, false, nil,
 	)
 	if err != nil {
-		return fmt.Errorf("gagal bind ke queue exchange: %w", err)
+		return fmt.Errorf("gagal bind queue %s: %w", queueName, err)
 	}
-
 	if err := c.channel.Qos(1, 0, false); err != nil {
 		return fmt.Errorf("gagal set qos: %w", err)
 	}
 
 	msgs, err := c.channel.Consume(
-		q.Name,
-		"",
-		false,
-		false,
-		false,
-		false,
-		nil,
+		q.Name, "", false, false, false, false, nil,
 	)
 	if err != nil {
 		return fmt.Errorf("gagal mulai consume: %w", err)
@@ -90,20 +71,35 @@ func (c *RabbitMQConsumer) ConsumeOrderCreated(ctx context.Context, handler Orde
 			return ctx.Err()
 		case msg, ok := <-msgs:
 			if !ok {
-				return fmt.Errorf("channel pesan tertutup")
+				return fmt.Errorf("channel pesan %s tertutup", queueName)
 			}
-			var evt OrderCreatedEvent
-			if err := json.Unmarshal(msg.Body, &evt); err != nil {
-				msg.Nack(false, false)
-				continue
-			}
-			if err := handler(ctx, evt); err != nil {
+			if err := handler(ctx, msg.Body); err != nil {
 				msg.Nack(false, true)
 				continue
 			}
 			msg.Ack(false)
 		}
 	}
+}
+
+func (c *RabbitMQConsumer) ConsumeOrderCreated(ctx context.Context, handler func(ctx context.Context, evt OrderCreatedEvent) error) error {
+	return c.consume(ctx, "order.created.queue", RoutingKeyOrderCreated, func(ctx context.Context, body []byte) error {
+		var evt OrderCreatedEvent
+		if err := json.Unmarshal(body, &evt); err != nil {
+			return nil
+		}
+		return handler(ctx, evt)
+	})
+}
+
+func (c *RabbitMQConsumer) ConsumeCheckout(ctx context.Context, handler func(ctx context.Context, evt CheckoutEvent) error) error {
+	return c.consume(ctx, "order.checkout.queue", RoutingKeyCheckout, func(ctx context.Context, body []byte) error {
+		var evt CheckoutEvent
+		if err := json.Unmarshal(body, &evt); err != nil {
+			return nil
+		}
+		return handler(ctx, evt)
+	})
 }
 
 func (c *RabbitMQConsumer) Close() error {

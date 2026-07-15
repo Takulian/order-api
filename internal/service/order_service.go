@@ -110,7 +110,7 @@ func (s *OrderService) Create(ctx context.Context, req dto.CreateOrderRequest) (
 		s.logger.WarnContext(ctx, "gagal hapus cache", "error", err)
 	}
 
-	if err := s.publisher.Publish(ctx, event.RuotingKeyOrderCreated, event.OrderCreatedEvent{
+	if err := s.publisher.Publish(ctx, event.RoutingKeyOrderCreated, event.OrderCreatedEvent{
 		OrderID:   order.ID,
 		Customer:  order.Customer,
 		Product:   order.Product,
@@ -178,6 +178,33 @@ func (s *OrderService) Delete(ctx context.Context, id int) error {
 	}
 	if err := s.cache.Del(ctx, fmt.Sprintf("orders:%d", id)); err != nil {
 		s.logger.WarnContext(ctx, "gagal hapus cache", "error", err)
+	}
+
+	return nil
+}
+
+func (s *OrderService) Checkout(ctx context.Context, req dto.CreateOrderRequest) error {
+	if req.Customer == "" {
+		s.logger.WarnContext(ctx, "validasi gagal: customer kosong")
+		return ErrCustomerRequired
+	}
+	if req.Product == "" {
+		s.logger.WarnContext(ctx, "validasi gagal: product kosong")
+		return ErrProductRequired
+	}
+	if req.Quantity <= 0 {
+		s.logger.WarnContext(ctx, "validasi gagal: quantity tidak valid")
+		return ErrInvalidQuantity
+	}
+
+	err := s.publisher.Publish(ctx, event.RoutingKeyCheckout, event.CheckoutEvent{
+		Customer: req.Customer,
+		Product:  req.Product,
+		Quantity: req.Quantity,
+	})
+	if err != nil {
+		s.logger.ErrorContext(ctx, "gagal publish event checkout", "error", err)
+		return err
 	}
 
 	return nil

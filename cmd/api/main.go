@@ -8,6 +8,7 @@ import (
 	"order-api/internal/cache"
 	"order-api/internal/config"
 	"order-api/internal/database"
+	"order-api/internal/dto"
 	"order-api/internal/event"
 	"order-api/internal/grpcserver"
 	"order-api/internal/handler"
@@ -90,6 +91,20 @@ func main() {
 		panic(err)
 	}
 	defer consumer.Close()
+
+	go func() {
+		err := consumer.ConsumeCheckout(ctx, func(ctx context.Context, evt event.CheckoutEvent) error {
+			_, err := service.Create(ctx, dto.CreateOrderRequest{
+				Customer: evt.Customer,
+				Product:  evt.Product,
+				Quantity: evt.Quantity,
+			})
+			return err
+		})
+		if err != nil {
+			logger.Error("consumer order.checkout berhenti karena error", "error", err)
+		}
+	}()
 
 	go func() {
 		err := consumer.ConsumeOrderCreated(ctx, func(ctx context.Context, evt event.OrderCreatedEvent) error {

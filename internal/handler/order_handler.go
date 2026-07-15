@@ -167,3 +167,26 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusNoContent, true, "Order deleted successfully", nil)
 }
+
+func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
+	var req dto.CreateOrderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.WarnContext(r.Context(), "invalid request body")
+		response.JSON(w, http.StatusBadRequest, false, "Invalid request body", nil)
+		return
+	}
+
+	if err := h.service.Checkout(r.Context(), req); err != nil {
+
+		response.JSON(w, http.StatusBadRequest, false, err.Error(), nil)
+		return
+	}
+
+	response.JSON(
+		w,
+		http.StatusCreated,
+		true,
+		"Order created successfully",
+		req,
+	)
+}
