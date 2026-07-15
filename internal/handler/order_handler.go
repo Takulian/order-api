@@ -186,7 +186,7 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		w,
 		http.StatusCreated,
 		true,
-		"Order created successfully",
+		"Checkout Order Published",
 		req,
 	)
 }
