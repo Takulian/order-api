@@ -55,6 +55,14 @@ message DeleteOrderRequest {
 
 message DeleteOrderResponse {}
 
+message CheckoutRequest {
+    string customer = 1;
+    string product = 2;
+    int32 quantity = 3;
+}
+
+message CheckoutResponse {}
+
 service OrderService {
     rpc GetOrders(GetOrdersRequest) returns (GetOrdersResponse){
         option (google.api.http) = {
@@ -85,6 +93,13 @@ service OrderService {
     rpc DeleteOrder(DeleteOrderRequest) returns (DeleteOrderResponse){
         option (google.api.http) = {
             delete: "/v1/orders/{id}"
+        };
+    }
+
+    rpc Checkout(CheckoutRequest) returns (CheckoutResponse){
+        option (google.api.http) = {
+            post: "/v1/checkout"
+            body: "*"
         };
     }
 }

@@ -96,3 +96,18 @@ func (s *OrderGRPCServer) DeleteOrder(ctx context.Context, req *orderv1.DeleteOr
 	}
 	return &orderv1.DeleteOrderResponse{}, nil
 }
+
+func (s *OrderGRPCServer) Checkout(ctx context.Context, req *orderv1.CheckoutRequest) (*orderv1.CheckoutResponse, error) {
+	dtoReq := dto.CreateOrderRequest{
+		Customer: req.Customer,
+		Product:  req.Product,
+		Quantity: int(req.Quantity),
+	}
+
+	err := s.service.Checkout(ctx, dtoReq)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+
+	return &orderv1.CheckoutResponse{}, nil
+}
