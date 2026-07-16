@@ -17,6 +17,7 @@ import (
 	"order-api/internal/router"
 	"order-api/internal/service"
 	orderv1 "order-api/proto/order/v1"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
@@ -84,6 +85,13 @@ func main() {
 	service := service.NewOrderService(repo, cache, publisher, logger)
 	orderHandler := handler.NewOrderHandler(service, logger)
 	router := router.NewRouter(orderHandler)
+	srv := &http.Server{
+		Addr:         cfg.App.PSN(),
+		Handler:      router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  30 * time.Second,
+	}
 
 	consumer, err := event.NewRabbitMQConsumer(rabbitConn)
 	if err != nil {
@@ -121,8 +129,8 @@ func main() {
 	}()
 
 	go func() {
-		logger.Info("starting server", "port", 8080)
-		if err := http.ListenAndServe(":8080", router); err != nil {
+		logger.Info("starting server", "port", cfg.App.Port)
+		if err := srv.ListenAndServe(); err != nil {
 			logger.Error("server berhenti", "error", err)
 		}
 	}()

@@ -21,6 +21,10 @@ type AppConfig struct {
 	Port string
 }
 
+func (a AppConfig) PSN() string {
+	return fmt.Sprintf(":%s", a.Port)
+}
+
 type DatabaseConfig struct {
 	Host     string
 	Port     string
