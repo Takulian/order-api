@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"google.golang.org/grpc/reflection"
 
 	_ "order-api/docs"
 
@@ -137,6 +138,7 @@ func main() {
 
 	grpcOrderServer := grpcserver.NewOrderGRPCServer(service)
 	grpcServer := grpc.NewServer()
+	reflection.Register(grpcServer)
 	orderv1.RegisterOrderServiceServer(grpcServer, grpcOrderServer)
 
 	go func() {

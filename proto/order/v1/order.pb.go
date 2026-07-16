@@ -7,7 +7,6 @@
 package orderv1
 
 import (
-	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -662,7 +661,7 @@ var File_order_v1_order_proto protoreflect.FileDescriptor
 
 const file_order_v1_order_proto_rawDesc = "" +
 	"\n" +
-	"\x14order/v1/order.proto\x12\border.v1\x1a\x1cgoogle/api/annotations.proto\"\x81\x01\n" +
+	"\x14order/v1/order.proto\x12\border.v1\"\x81\x01\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x1a\n" +
 	"\bcustomer\x18\x02 \x01(\tR\bcustomer\x12\x18\n" +
@@ -696,16 +695,14 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\bcustomer\x18\x01 \x01(\tR\bcustomer\x12\x18\n" +
 	"\aproduct\x18\x02 \x01(\tR\aproduct\x12\x1a\n" +
 	"\bquantity\x18\x03 \x01(\x05R\bquantity\"\x12\n" +
-	"\x10CheckoutResponse2\xdc\x04\n" +
-	"\fOrderService\x12X\n" +
-	"\tGetOrders\x12\x1a.order.v1.GetOrdersRequest\x1a\x1b.order.v1.GetOrdersResponse\"\x12\x82\xd3\xe4\x93\x02\f\x12\n" +
-	"/v1/orders\x12f\n" +
-	"\fGetOrderByID\x12\x1d.order.v1.GetOrderByIDRequest\x1a\x1e.order.v1.GetOrderByIDResponse\"\x17\x82\xd3\xe4\x93\x02\x11\x12\x0f/v1/orders/{id}\x12a\n" +
-	"\vCreateOrder\x12\x1c.order.v1.CreateOrderRequest\x1a\x1d.order.v1.CreateOrderResponse\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*\"\n" +
-	"/v1/orders\x12f\n" +
-	"\vUpdateOrder\x12\x1c.order.v1.UpdateOrderRequest\x1a\x1d.order.v1.UpdateOrderResponse\"\x1a\x82\xd3\xe4\x93\x02\x14:\x01*\x1a\x0f/v1/orders/{id}\x12c\n" +
-	"\vDeleteOrder\x12\x1c.order.v1.DeleteOrderRequest\x1a\x1d.order.v1.DeleteOrderResponse\"\x17\x82\xd3\xe4\x93\x02\x11*\x0f/v1/orders/{id}\x12Z\n" +
-	"\bCheckout\x12\x19.order.v1.CheckoutRequest\x1a\x1a.order.v1.CheckoutResponse\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/v1/checkoutB Z\x1eorder-api/gen/order/v1;orderv1b\x06proto3"
+	"\x10CheckoutResponse2\xd6\x03\n" +
+	"\fOrderService\x12F\n" +
+	"\tGetOrders\x12\x1a.order.v1.GetOrdersRequest\x1a\x1b.order.v1.GetOrdersResponse\"\x00\x12O\n" +
+	"\fGetOrderByID\x12\x1d.order.v1.GetOrderByIDRequest\x1a\x1e.order.v1.GetOrderByIDResponse\"\x00\x12L\n" +
+	"\vCreateOrder\x12\x1c.order.v1.CreateOrderRequest\x1a\x1d.order.v1.CreateOrderResponse\"\x00\x12L\n" +
+	"\vUpdateOrder\x12\x1c.order.v1.UpdateOrderRequest\x1a\x1d.order.v1.UpdateOrderResponse\"\x00\x12L\n" +
+	"\vDeleteOrder\x12\x1c.order.v1.DeleteOrderRequest\x1a\x1d.order.v1.DeleteOrderResponse\"\x00\x12C\n" +
+	"\bCheckout\x12\x19.order.v1.CheckoutRequest\x1a\x1a.order.v1.CheckoutResponse\"\x00B Z\x1eorder-api/gen/order/v1;orderv1b\x06proto3"
 
 var (
 	file_order_v1_order_proto_rawDescOnce sync.Once

@@ -8,4 +8,7 @@ plugins:
     opt:  paths=source_relative
   - local: protoc-gen-grpc-gateway
     out:  proto
-    opt:  paths=source_relative
+    opt:
+      - paths=source_relative
+      - generate_unbound_methods=true
+      - grpc_api_configuration=./order_gateway_grpc_gateway.yaml

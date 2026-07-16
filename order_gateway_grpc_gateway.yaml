@@ -1,0 +1,19 @@
+type: google.api.Service
+config_version: 3
+http:
+  rules:
+    - selector: order.v1.OrderService.GetOrders
+      get: /v1/orders
+    - selector: order.v1.OrderService.GetOrderByID
+      get: /v1/orders/{id}
+    - selector: order.v1.OrderService.CreateOrder
+      post: /v1/orders
+      body: "*"
+    - selector: order.v1.OrderService.UpdateOrder
+      put: /v1/orders/{id}
+      body: "*"
+    - selector: order.v1.OrderService.DeleteOrder
+      delete: /v1/orders/{id}
+    - selector: order.v1.OrderService.Checkout
+      post: /v1/checkout
+      body: "*"
