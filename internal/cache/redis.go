@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"order-api/internal/breaker"
 	"order-api/internal/model"
 	"time"
@@ -59,16 +60,24 @@ func (r *RedisCache) SetAll(ctx context.Context, key string, orders []model.Orde
 
 func (r *RedisCache) GetByID(ctx context.Context, id int, key string) (model.Order, error) {
 	var order model.Order
+	var notfound bool
 	err := r.cb.Execute(func() error {
 		data, err := r.client.Get(ctx, key).Result()
+		if errors.Is(err, redis.Nil) {
+			notfound = true
+			return nil
+		}
 		if err != nil {
 			return err
 		}
 		return json.Unmarshal([]byte(data), &order)
 	})
+	if notfound == true {
+		return model.Order{}, redis.Nil
+	}
 
 	if err != nil {
-		return model.Order{}, nil
+		return model.Order{}, err
 	}
 
 	return order, nil
