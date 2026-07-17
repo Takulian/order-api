@@ -127,8 +127,8 @@ func main() {
 		})
 		if err != nil {
 			logger.Error("consumer order.created berhenti karena error", "error", err)
+			panic(err)
 		}
-		panic(err)
 	})
 
 	observability.SafeGo(ctx, logger, "server-rest:8080", func() {
