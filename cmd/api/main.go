@@ -101,7 +101,7 @@ func main() {
 	}
 	defer consumer.Close()
 
-	go func() {
+	observability.SafeGo(ctx, logger, "consume-checkout", func() {
 		err := consumer.ConsumeCheckout(ctx, func(ctx context.Context, evt event.CheckoutEvent) error {
 			_, err := service.Create(ctx, dto.CreateOrderRequest{
 				Customer: evt.Customer,
@@ -112,10 +112,11 @@ func main() {
 		})
 		if err != nil {
 			logger.Error("consumer order.checkout berhenti karena error", "error", err)
+			panic(err)
 		}
-	}()
+	})
 
-	go func() {
+	observability.SafeGo(ctx, logger, "consume-order-created", func() {
 		err := consumer.ConsumeOrderCreated(ctx, func(ctx context.Context, evt event.OrderCreatedEvent) error {
 			logger.InfoContext(ctx, "menerima order.created",
 				"order_id", evt.OrderID,
@@ -127,21 +128,23 @@ func main() {
 		if err != nil {
 			logger.Error("consumer order.created berhenti karena error", "error", err)
 		}
-	}()
+		panic(err)
+	})
 
-	go func() {
+	observability.SafeGo(ctx, logger, "server-rest:8080", func() {
 		logger.Info("starting server", "port", cfg.App.Port)
 		if err := srv.ListenAndServe(); err != nil {
 			logger.Error("server berhenti", "error", err)
+			panic(err)
 		}
-	}()
+	})
 
 	grpcOrderServer := grpcserver.NewOrderGRPCServer(service)
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
 	orderv1.RegisterOrderServiceServer(grpcServer, grpcOrderServer)
 
-	go func() {
+	observability.SafeGo(ctx, logger, "server-grpc", func() {
 		lis, err := net.Listen("tcp", ":9090")
 		if err != nil {
 			logger.Error("gRPC listener error", "error", err)
@@ -149,8 +152,9 @@ func main() {
 		logger.Info("gRPC server listening on :9090")
 		if err := grpcServer.Serve(lis); err != nil {
 			logger.Error("gRPC server error", "error", err)
+			panic(err)
 		}
-	}()
+	})
 
 	gwMux := runtime.NewServeMux()
 	if err := orderv1.RegisterOrderServiceHandlerFromEndpoint(
