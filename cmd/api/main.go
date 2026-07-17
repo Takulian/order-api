@@ -8,8 +8,8 @@ import (
 	"order-api/internal/cache"
 	"order-api/internal/config"
 	"order-api/internal/database"
-	"order-api/internal/dto"
 	"order-api/internal/event"
+	"order-api/internal/eventhandler"
 	"order-api/internal/grpcserver"
 	"order-api/internal/handler"
 	"order-api/internal/observability"
@@ -101,35 +101,8 @@ func main() {
 	}
 	defer consumer.Close()
 
-	observability.SafeGo(ctx, logger, "consume-checkout", func() {
-		err := consumer.ConsumeCheckout(ctx, func(ctx context.Context, evt event.CheckoutEvent) error {
-			_, err := service.Create(ctx, dto.CreateOrderRequest{
-				Customer: evt.Customer,
-				Product:  evt.Product,
-				Quantity: evt.Quantity,
-			})
-			return err
-		})
-		if err != nil {
-			logger.Error("consumer order.checkout berhenti karena error", "error", err)
-			panic(err)
-		}
-	})
-
-	observability.SafeGo(ctx, logger, "consume-order-created", func() {
-		err := consumer.ConsumeOrderCreated(ctx, func(ctx context.Context, evt event.OrderCreatedEvent) error {
-			logger.InfoContext(ctx, "menerima order.created",
-				"order_id", evt.OrderID,
-				"consumer", evt.Customer,
-				"product", evt.Product,
-			)
-			return nil
-		})
-		if err != nil {
-			logger.Error("consumer order.created berhenti karena error", "error", err)
-			panic(err)
-		}
-	})
+	consumeHandler := eventhandler.NewConsumeHandler(consumer, service, logger)
+	consumeHandler.Start(ctx)
 
 	observability.SafeGo(ctx, logger, "server-rest:8080", func() {
 		logger.Info("starting server", "port", cfg.App.Port)
