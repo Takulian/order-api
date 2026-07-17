@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"order-api/internal/breaker"
 	"order-api/internal/model"
 	"time"
 
@@ -11,22 +12,34 @@ import (
 
 type RedisCache struct {
 	client *redis.Client
+	cb     *breaker.CircuitBreaker
 }
 
 func NewRedisCache(client *redis.Client) *RedisCache {
+	cb := breaker.NewCircuitBreaker(breaker.Settings{
+		Name:                "redis-cache",
+		FailureThreshold:    3,
+		Openduration:        10 * time.Second,
+		HalfOpenMaxRequests: 1,
+	})
+
 	return &RedisCache{
 		client: client,
+		cb:     cb,
 	}
 }
 
 func (r *RedisCache) GetAll(ctx context.Context, key string) ([]model.Order, error) {
-	data, err := r.client.Get(ctx, key).Result()
-	if err != nil {
-		return nil, err
-	}
 	var orders []model.Order
+	err := r.cb.Execute(func() error {
+		data, err := r.client.Get(ctx, key).Result()
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal([]byte(data), &orders)
+	})
 
-	if err := json.Unmarshal([]byte(data), &orders); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -39,17 +52,23 @@ func (r *RedisCache) SetAll(ctx context.Context, key string, orders []model.Orde
 		return err
 	}
 
-	return r.client.Set(ctx, key, data, ttl).Err()
+	return r.cb.Execute(func() error {
+		return r.client.Set(ctx, key, data, ttl).Err()
+	})
 }
 
 func (r *RedisCache) GetByID(ctx context.Context, id int, key string) (model.Order, error) {
-	data, err := r.client.Get(ctx, key).Result()
-	if err != nil {
-		return model.Order{}, err
-	}
 	var order model.Order
-	if err := json.Unmarshal([]byte(data), &order); err != nil {
-		return model.Order{}, err
+	err := r.cb.Execute(func() error {
+		data, err := r.client.Get(ctx, key).Result()
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal([]byte(data), &order)
+	})
+
+	if err != nil {
+		return model.Order{}, nil
 	}
 
 	return order, nil
@@ -60,9 +79,14 @@ func (r *RedisCache) SetByID(ctx context.Context, key string, order model.Order,
 	if err != nil {
 		return err
 	}
-	return r.client.Set(ctx, key, data, ttl).Err()
+
+	return r.cb.Execute(func() error {
+		return r.client.Set(ctx, key, data, ttl).Err()
+	})
 }
 
 func (r *RedisCache) Del(ctx context.Context, key string) error {
-	return r.client.Del(ctx, key).Err()
+	return r.cb.Execute(func() error {
+		return r.client.Del(ctx, key).Err()
+	})
 }
